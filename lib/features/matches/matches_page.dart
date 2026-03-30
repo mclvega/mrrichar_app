@@ -1,0 +1,128 @@
+import 'package:flutter/material.dart';
+import 'package:mrrichar_app/data/excel_data_source.dart';
+import 'package:mrrichar_app/widgets/team_logo_avatar.dart';
+
+class MatchesPage extends StatefulWidget {
+  const MatchesPage({super.key});
+
+  @override
+  State<MatchesPage> createState() => _MatchesPageState();
+}
+
+class _MatchesPageState extends State<MatchesPage> {
+  late final Future<AppTournamentData> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = ExcelDataSource.instance.loadData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AppTournamentData>(
+      future: _dataFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text('No se pudieron cargar partidos.'));
+        }
+
+        final matches = snapshot.data?.matches ?? const [];
+        if (matches.isEmpty) {
+          return const Center(child: Text('No hay partidos programados.'));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: matches.length,
+          itemBuilder: (context, index) {
+            final m = matches[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MatchDetailPage(match: m),
+                    ),
+                  );
+                },
+                leading: const TeamLogoAvatar(size: 24),
+                title: Row(
+                  children: [
+                    const TeamLogoAvatar(size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('${m.homePlayer} vs ${m.awayPlayer}'),
+                    ),
+                  ],
+                ),
+                subtitle: Text(m.schedule),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class MatchDetailPage extends StatelessWidget {
+  const MatchDetailPage({
+    super.key,
+    required this.match,
+  });
+
+  final MatchInfo match;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            const TeamLogoAvatar(size: 22),
+            const SizedBox(width: 8),
+            Expanded(child: Text('${match.homePlayer} vs ${match.awayPlayer}')),
+          ],
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const TeamLogoAvatar(size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text('Equipo local: ${match.homePlayer} (${match.homePlayerCode})')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const TeamLogoAvatar(size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text('Equipo visitante: ${match.awayPlayer} (${match.awayPlayerCode})')),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Horario: ${match.schedule}'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
