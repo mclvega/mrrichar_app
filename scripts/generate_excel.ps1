@@ -9,7 +9,7 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Fallo al generar el Excel."
     }
-    Write-Host "Excel generado correctamente en assets/data/virtual_football_data.xlsx"
+    Write-Host "Excel generado correctamente en assets/data/mrrichar_data.xlsx"
 }
 finally {
     Pop-Location

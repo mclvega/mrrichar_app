@@ -155,6 +155,7 @@ class _ChampionshipDetailPageState extends State<ChampionshipDetailPage> {
         relatedMatches.where((m) => eliminationPhaseCodes.contains(m.phaseCode)).toList(growable: false);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(widget.championship.name)),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -181,32 +182,35 @@ class _ChampionshipDetailPageState extends State<ChampionshipDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _SectionButton(
-                  label: 'Grupos',
-                  isSelected: _selectedSection == _DetailSection.group,
-                  onPressed: () {
-                    setState(() {
-                      _selectedSection = _DetailSection.group;
-                    });
-                  },
-                ),
+          DefaultTabController(
+            length: 2,
+            initialIndex: _selectedSection == _DetailSection.group ? 0 : 1,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _SectionButton(
-                  label: 'Fase Eliminatoria',
-                  isSelected: _selectedSection == _DetailSection.elimination,
-                  onPressed: () {
-                    setState(() {
-                      _selectedSection = _DetailSection.elimination;
-                    });
-                  },
+              child: TabBar(
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.white,
+                indicator: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
                 ),
+                onTap: (index) {
+                  setState(() {
+                    _selectedSection = index == 0
+                        ? _DetailSection.group
+                        : _DetailSection.elimination;
+                  });
+                },
+                tabs: const [
+                  Tab(child: _OutlinedTabLabel(text: 'Grupos')),
+                  Tab(child: _OutlinedTabLabel(text: 'Fase Eliminatoria')),
+                ],
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 8),
           if (_selectedSection == _DetailSection.group)
@@ -246,24 +250,18 @@ class _ChampionshipDetailPageState extends State<ChampionshipDetailPage> {
 
 enum _DetailSection { group, elimination }
 
-class _SectionButton extends StatelessWidget {
-  const _SectionButton({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
+class _OutlinedTabLabel extends StatelessWidget {
+  const _OutlinedTabLabel({required this.text});
 
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    if (isSelected) {
-      return FilledButton(onPressed: onPressed, child: Text(label));
-    }
-
-    return OutlinedButton(onPressed: onPressed, child: Text(label));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      alignment: Alignment.center,
+      child: Text(text),
+    );
   }
 }
 
@@ -348,167 +346,165 @@ class _GroupPhaseSection extends StatelessWidget {
         ),
       );
 
+    final selectedPhaseIndex = phases.indexWhere((p) => p.code == selectedPhaseCode);
+    final effectivePhaseIndex = selectedPhaseIndex >= 0 ? selectedPhaseIndex : 0;
+    final sectionTabs = <Tab>[
+      if (phases.isNotEmpty)
+        Tab(child: _OutlinedTabLabel(text: phases.first.name)),
+      const Tab(child: _OutlinedTabLabel(text: 'Tabla general')),
+      ...phases.skip(1).map((phase) => Tab(child: _OutlinedTabLabel(text: phase.name))),
+    ];
+    final currentTabIndex = phases.isEmpty
+        ? 0
+        : (showGeneralTable
+              ? 1
+              : (effectivePhaseIndex == 0 ? 0 : effectivePhaseIndex + 1));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (phases.isNotEmpty) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: Text(
-                  'Modo grupos',
-                  style: TextStyle(
-                    color: !showGeneralTable ? Colors.white : Colors.black,
-                  ),
-                ),
-                selected: !showGeneralTable,
-                showCheckmark: true,
-                onSelected: (_) => onShowGeneralTableChanged(false),
-              ),
-              ChoiceChip(
-                label: Text(
-                  'Tabla general',
-                  style: TextStyle(
-                    color: showGeneralTable ? Colors.white : Colors.black,
-                  ),
-                ),
-                selected: showGeneralTable,
-                showCheckmark: true,
-                onSelected: (_) => onShowGeneralTableChanged(true),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (showGeneralTable)
-            if (sortedGeneralTableEntries.isEmpty)
-              const Card(
-                margin: EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No hay tabla general cargada para este campeonato.'),
-                ),
-              )
-            else
-              Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Tabla General', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
-                      _GeneralPinnedNameTable(entries: sortedGeneralTableEntries),
-                    ],
-                  ),
-                ),
-              )
-          else ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: phases
-                  .map(
-                    (phase) => ChoiceChip(
-                      label: Text(
-                        phase.name,
-                        style: TextStyle(
-                          color: selectedPhaseCode == phase.code
-                              ? Colors.white
-                              : Colors.black,
-                        ),
-                      ),
-                      selected: selectedPhaseCode == phase.code,
-                      onSelected: (_) => onPhaseSelected(phase.code),
-                    ),
-                  )
-                  .toList(growable: false),
+        DefaultTabController(
+          length: sectionTabs.length,
+          initialIndex: currentTabIndex,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 12),
-            if (orderedGroups.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No hay grupos con partidos para la fase seleccionada.'),
+            child: TabBar(
+              isScrollable: true,
+              labelColor: Colors.black,
+              unselectedLabelColor: Colors.white,
+              indicator: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+              onTap: (index) {
+                if (phases.isEmpty) {
+                  onShowGeneralTableChanged(true);
+                  return;
+                }
+
+                if (index == 1) {
+                  onShowGeneralTableChanged(true);
+                  return;
+                }
+
+                onShowGeneralTableChanged(false);
+                final phaseIndex = index == 0 ? 0 : index - 1;
+                onPhaseSelected(phases[phaseIndex].code);
+              },
+              tabs: sectionTabs,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (showGeneralTable)
+          if (sortedGeneralTableEntries.isEmpty)
+            const Card(
+              margin: EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('No hay tabla general cargada para este campeonato.'),
+              ),
+            )
+          else
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tabla General', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    _GeneralPinnedNameTable(entries: sortedGeneralTableEntries),
+                  ],
                 ),
-              )
-            else
-              ...orderedGroups.map(
-                (groupName) {
-                  final groupMatches = groupedMatches[groupName] ?? const [];
-                  final teams = <String, String>{};
-                  for (final m in groupMatches) {
-                    teams[m.homePlayerCode] = m.homePlayer;
-                    teams[m.awayPlayerCode] = m.awayPlayer;
-                  }
+              ),
+            )
+        else
+          if (orderedGroups.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('No hay grupos con partidos para la fase seleccionada.'),
+              ),
+            )
+          else
+            ...orderedGroups.map(
+              (groupName) {
+                final groupMatches = groupedMatches[groupName] ?? const [];
+                final teams = <String, String>{};
+                for (final m in groupMatches) {
+                  teams[m.homePlayerCode] = m.homePlayer;
+                  teams[m.awayPlayerCode] = m.awayPlayer;
+                }
 
-                  final standings = teams.entries
-                      .map(
-                        (team) {
-                          final entry = _buildGroupStats(teamCode: team.key, matches: groupMatches);
-                          return _GroupStandingData(
-                            teamCode: team.key,
-                            teamName: team.value,
-                            points: entry.points,
-                            played: entry.played,
-                            won: entry.won,
-                            drawn: entry.drawn,
-                            lost: entry.lost,
-                            goalsFor: entry.goalsFor,
-                            goalsAgainst: entry.goalsAgainst,
-                          );
-                        },
-                      )
-                      .toList(growable: false)
-                    ..sort(
-                      (a, b) => compareBySportsOrder(
-                        pointsA: a.points,
-                        wonA: a.won,
-                        drawnA: a.drawn,
-                        lostA: a.lost,
-                        nameA: a.teamName,
-                        pointsB: b.points,
-                        wonB: b.won,
-                        drawnB: b.drawn,
-                        lostB: b.lost,
-                        nameB: b.teamName,
-                      ),
-                    );
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(groupName, style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 8),
-                          _GroupPinnedNameTable(
-                            rows: standings,
-                            onTapTeam: (team) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => TeamMatchesInGroupPage(
-                                    teamCode: team.teamCode,
-                                    teamName: team.teamName,
-                                    groupName: groupName,
-                                    matches: groupMatches,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                final standings = teams.entries
+                    .map(
+                      (team) {
+                        final entry = _buildGroupStats(teamCode: team.key, matches: groupMatches);
+                        return _GroupStandingData(
+                          teamCode: team.key,
+                          teamName: team.value,
+                          points: entry.points,
+                          played: entry.played,
+                          won: entry.won,
+                          drawn: entry.drawn,
+                          lost: entry.lost,
+                          goalsFor: entry.goalsFor,
+                          goalsAgainst: entry.goalsAgainst,
+                        );
+                      },
+                    )
+                    .toList(growable: false)
+                  ..sort(
+                    (a, b) => compareBySportsOrder(
+                      pointsA: a.points,
+                      wonA: a.won,
+                      drawnA: a.drawn,
+                      lostA: a.lost,
+                      nameA: a.teamName,
+                      pointsB: b.points,
+                      wonB: b.won,
+                      drawnB: b.drawn,
+                      lostB: b.lost,
+                      nameB: b.teamName,
                     ),
                   );
-                },
-              ),
-          ],
-        ],
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(groupName, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        _GroupPinnedNameTable(
+                          rows: standings,
+                          onTapTeam: (team) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TeamMatchesInGroupPage(
+                                  teamCode: team.teamCode,
+                                  teamName: team.teamName,
+                                  groupName: groupName,
+                                  matches: groupMatches,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
       ],
     );
   }
@@ -847,6 +843,7 @@ class TeamMatchesInGroupPage extends StatelessWidget {
         .toList(growable: false);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text('$teamName - $groupName')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -909,6 +906,10 @@ class _EliminationBracketSection extends StatelessWidget {
         selectedPhaseCode != null && orderedPhases.any((p) => p.code == selectedPhaseCode)
         ? selectedPhaseCode
         : (orderedPhases.isNotEmpty ? orderedPhases.first.code : null);
+    final selectedPhaseIndex = effectiveSelectedPhaseCode == null
+      ? 0
+      : orderedPhases.indexWhere((p) => p.code == effectiveSelectedPhaseCode);
+    final effectivePhaseIndex = selectedPhaseIndex >= 0 ? selectedPhaseIndex : 0;
 
     final phaseName = effectiveSelectedPhaseCode == null
       ? 'Fase'
@@ -956,8 +957,6 @@ class _EliminationBracketSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Eliminacion Directa', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
         if (orderedPhases.isEmpty)
           const Card(
             child: Padding(
@@ -966,25 +965,29 @@ class _EliminationBracketSection extends StatelessWidget {
             ),
           )
         else ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: orderedPhases
-                .map(
-                  (phase) => ChoiceChip(
-                    label: Text(
-                      phase.name,
-                      style: TextStyle(
-                        color: effectiveSelectedPhaseCode == phase.code
-                            ? Colors.white
-                            : Colors.black,
-                      ),
-                    ),
-                    selected: effectiveSelectedPhaseCode == phase.code,
-                    onSelected: (_) => onPhaseSelected(phase.code),
-                  ),
-                )
-                .toList(growable: false),
+          DefaultTabController(
+            length: orderedPhases.length,
+            initialIndex: effectivePhaseIndex,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TabBar(
+                isScrollable: true,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.white,
+                indicator: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+                onTap: (index) => onPhaseSelected(orderedPhases[index].code),
+                tabs: orderedPhases
+                    .map((phase) => Tab(child: _OutlinedTabLabel(text: phase.name)))
+                    .toList(growable: false),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           if (matches.isEmpty)

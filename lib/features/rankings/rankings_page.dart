@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mrrichar_app/data/excel_data_source.dart';
+import 'package:mrrichar_app/features/championships/championships_page.dart';
 import 'package:mrrichar_app/widgets/team_logo_avatar.dart';
 
 class RankingsPage extends StatefulWidget {
@@ -37,17 +38,34 @@ class _RankingsPageState extends State<RankingsPage> {
           length: 2,
           child: Column(
             children: [
-              const TabBar(
-                tabs: [
-                  Tab(text: 'Campeonatos'),
-                  Tab(text: 'Comunidad'),
-                ],
+              Container(
+                margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  labelColor: Colors.black,
+                  unselectedLabelColor: Colors.white,
+                  indicator: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  tabs: const [
+                    Tab(child: _OutlinedTabLabel(text: 'Campeonatos')),
+                    Tab(child: _OutlinedTabLabel(text: 'Comunidad')),
+                  ],
+                ),
               ),
               Expanded(
                 child: TabBarView(
                   children: [
                     _ChampionshipStatsList(players: data.championshipStatsRankings),
-                    _CommunityRankingList(players: data.communityRankings),
+                    _CommunityRankingList(
+                      players: data.communityRankings,
+                      championshipStats: data.championshipStatsRankings,
+                    ),
                   ],
                 ),
               ),
@@ -75,10 +93,6 @@ class _ChampionshipStatsList extends StatelessWidget {
       itemCount: players.length,
       itemBuilder: (context, index) {
         final player = players[index];
-        final championshipsPreview = player.wins
-            .take(2)
-            .map((w) => w.championshipName)
-            .join(' | ');
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
@@ -92,15 +106,11 @@ class _ChampionshipStatsList extends StatelessWidget {
             leading: CircleAvatar(child: Text('${player.position}')),
             title: Row(
               children: [
-                const TeamLogoAvatar(size: 20),
+                const TeamLogoAvatar(size: 48),
                 const SizedBox(width: 8),
                 Expanded(child: Text(player.name)),
               ],
             ),
-            subtitle: Text(
-              'Titulos: ${player.titles}\n$championshipsPreview',
-            ),
-            isThreeLine: true,
             trailing: Text(
               '${player.points} pts',
               style: Theme.of(context).textTheme.titleMedium,
@@ -108,6 +118,21 @@ class _ChampionshipStatsList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _OutlinedTabLabel extends StatelessWidget {
+  const _OutlinedTabLabel({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      alignment: Alignment.center,
+      child: Text(text),
     );
   }
 }
@@ -123,10 +148,11 @@ class ChampionshipPlayerDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Row(
           children: [
-            const TeamLogoAvatar(size: 22),
+            const TeamLogoAvatar(size: 48),
             const SizedBox(width: 8),
             Expanded(child: Text(player.name)),
           ],
@@ -156,13 +182,49 @@ class ChampionshipPlayerDetailPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Historial de Campeonatos Ganados',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                ),
           ),
           const SizedBox(height: 8),
           ...player.wins.map(
             (win) => Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: ListTile(
+                onTap: () async {
+                  final data = await ExcelDataSource.instance.loadData();
+                  if (!context.mounted) {
+                    return;
+                  }
+
+                  ChampionshipInfo? championship;
+                  for (final item in data.championships) {
+                    if (item.code == win.championshipCode) {
+                      championship = item;
+                      break;
+                    }
+                  }
+
+                  if (championship == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No se encontro el detalle del campeonato.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChampionshipDetailPage(
+                        championship: championship!,
+                        matches: data.matches,
+                        phases: data.championshipPhases,
+                        tableEntries: data.championshipTable,
+                      ),
+                    ),
+                  );
+                },
                 leading: const Icon(Icons.emoji_events),
                 title: Text(win.championshipName),
                 trailing: Text(
@@ -179,9 +241,13 @@ class ChampionshipPlayerDetailPage extends StatelessWidget {
 }
 
 class _CommunityRankingList extends StatelessWidget {
-  const _CommunityRankingList({required this.players});
+  const _CommunityRankingList({
+    required this.players,
+    required this.championshipStats,
+  });
 
   final List<PlayerRanking> players;
+  final List<ChampionshipStatsRanking> championshipStats;
 
   @override
   Widget build(BuildContext context) {
@@ -189,25 +255,38 @@ class _CommunityRankingList extends StatelessWidget {
       return const Center(child: Text('No hay equipos en el ranking de comunidad.'));
     }
 
+    final statsByPlayerCode = {
+      for (final stats in championshipStats) stats.playerCode: stats,
+    };
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: players.length,
       itemBuilder: (context, index) {
         final player = players[index];
+        final detailStats = statsByPlayerCode[player.playerCode] ??
+            ChampionshipStatsRanking(
+              position: player.position,
+              playerCode: player.playerCode,
+              name: player.name,
+              titles: 0,
+              points: 0,
+              wins: const <ChampionshipWinRecord>[],
+            );
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => CommunityPlayerDetailPage(player: player),
+                  builder: (_) => ChampionshipPlayerDetailPage(player: detailStats),
                 ),
               );
             },
             leading: CircleAvatar(child: Text('${player.position}')),
             title: Row(
               children: [
-                const TeamLogoAvatar(size: 20),
+                const TeamLogoAvatar(size: 48),
                 const SizedBox(width: 8),
                 Expanded(child: Text(player.name)),
               ],
@@ -233,35 +312,14 @@ class CommunityPlayerDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const TeamLogoAvatar(size: 22),
-            const SizedBox(width: 8),
-            Expanded(child: Text(player.name)),
-          ],
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Codigo: ${player.playerCode}'),
-                  const SizedBox(height: 8),
-                  Text('Posicion en comunidad: ${player.position}'),
-                  const SizedBox(height: 8),
-                  Text('Puntos de comunidad: ${player.points}'),
-                ],
-              ),
-            ),
-          ),
-        ],
+    return ChampionshipPlayerDetailPage(
+      player: ChampionshipStatsRanking(
+        position: player.position,
+        playerCode: player.playerCode,
+        name: player.name,
+        titles: 0,
+        points: 0,
+        wins: const <ChampionshipWinRecord>[],
       ),
     );
   }

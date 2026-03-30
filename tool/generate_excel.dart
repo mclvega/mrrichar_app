@@ -322,7 +322,7 @@ void main() {
     return;
   }
 
-  final output = File('assets/data/virtual_football_data.xlsx');
+  final output = File('assets/data/mrrichar_data.xlsx');
   output.createSync(recursive: true);
   output.writeAsBytesSync(encoded, flush: true);
 

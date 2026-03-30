@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mrrichar_app/app_theme.dart';
 import 'package:mrrichar_app/data/app_image_cache.dart';
@@ -5,7 +7,6 @@ import 'package:mrrichar_app/data/excel_data_source.dart';
 import 'package:mrrichar_app/data/local_settings_db.dart';
 import 'package:mrrichar_app/features/championships/championships_page.dart';
 import 'package:mrrichar_app/features/dashboard/dashboard_page.dart';
-import 'package:mrrichar_app/features/matches/matches_page.dart';
 import 'package:mrrichar_app/features/rankings/rankings_page.dart';
 import 'package:mrrichar_app/features/settings/settings_page.dart';
 
@@ -18,7 +19,14 @@ class VirtualFootballApp extends StatelessWidget {
 
   Future<_AppBootstrapResult> _bootstrapApp() async {
     await AppImageCache.instance.initialize();
-    await ExcelDataSource.instance.syncFromCloud();
+
+    // Load local data first for faster startup, then refresh from cloud in background.
+    unawaited(
+      ExcelDataSource.instance.syncFromCloud().then((_) {
+        unawaited(ExcelDataSource.instance.loadData());
+      }),
+    );
+
     await ExcelDataSource.instance.loadData();
     final defaultCode = await LocalSettingsDb.instance.getDefaultPlayerCode();
     return _AppBootstrapResult(defaultPlayerCode: defaultCode);
@@ -27,9 +35,9 @@ class VirtualFootballApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Gestion de Campeonatos',
+      title: 'MRRICHAR',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme.copyWith(scaffoldBackgroundColor: Colors.transparent),
+      theme: AppTheme.lightTheme,
       builder: (context, child) {
         return DecoratedBox(
           decoration: AppTheme.backgroundDecoration,
@@ -58,7 +66,7 @@ class StartupLoadingPage extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: Colors.transparent,
             body: Center(
               child: AppTheme.buildAppLogo(
                 width: 160,
@@ -71,7 +79,7 @@ class StartupLoadingPage extends StatelessWidget {
 
         if (snapshot.hasError || !snapshot.hasData) {
           return Scaffold(
-            backgroundColor: AppTheme.primaryColor,
+            backgroundColor: Colors.transparent,
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -94,7 +102,13 @@ class StartupLoadingPage extends StatelessWidget {
                               bootstrapFuture: Future<_AppBootstrapResult>.microtask(
                                 () async {
                                   await AppImageCache.instance.initialize();
-                                  await ExcelDataSource.instance.syncFromCloud();
+
+                                  unawaited(
+                                    ExcelDataSource.instance.syncFromCloud().then((_) {
+                                      unawaited(ExcelDataSource.instance.loadData());
+                                    }),
+                                  );
+
                                   await ExcelDataSource.instance.loadData();
                                   final defaultCode = await LocalSettingsDb.instance
                                       .getDefaultPlayerCode();
@@ -144,6 +158,8 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String? _defaultPlayerCode;
   bool _isLoadingDefaultPlayer = false;
+  bool _isRefreshingData = false;
+  int _dataReloadToken = 0;
 
   @override
   void initState() {
@@ -171,41 +187,122 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _refreshData() async {
+    if (_isRefreshingData) {
+      return;
+    }
+
+    setState(() {
+      _isRefreshingData = true;
+    });
+
+    try {
+      await ExcelDataSource.instance.syncFromCloud();
+      await ExcelDataSource.instance.loadData();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _dataReloadToken += 1;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Datos actualizados.')),
+      );
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isRefreshingData = false;
+      });
+    }
+  }
+
   static const _titles = [
     'Inicio',
     'Ranking',
     'Campeonatos',
-    'Partidos',
   ];
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       DashboardPage(
+        key: ValueKey('dashboard-$_dataReloadToken'),
         defaultPlayerCode: _defaultPlayerCode,
         isLoadingDefaultPlayer: _isLoadingDefaultPlayer,
         onOpenSettings: _openSettings,
       ),
-      const RankingsPage(),
-      const ChampionshipsPage(),
-      const MatchesPage(),
+      RankingsPage(key: ValueKey('rankings-$_dataReloadToken')),
+      ChampionshipsPage(key: ValueKey('championships-$_dataReloadToken')),
     ];
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
-        actions: [
-          IconButton(
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings),
-            tooltip: 'Configuracion',
-          ),
+        actions: _selectedIndex == 0
+            ? [
+                IconButton(
+                  onPressed: _isRefreshingData ? null : _refreshData,
+                  icon: _isRefreshingData
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.download),
+                  tooltip: 'Descargar y recargar datos',
+                ),
+                IconButton(
+                  onPressed: _openSettings,
+                  icon: const Icon(Icons.settings),
+                  tooltip: 'Configuracion',
+                ),
+              ]
+            : null,
+      ),
+      body: Stack(
+        children: [
+          pages[_selectedIndex],
+          if (_isRefreshingData)
+            Positioned.fill(
+              child: ColoredBox(
+                color: AppTheme.primaryColor,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppTheme.buildAppLogo(
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Recargando datos...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
-      body: pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
+          if (_isRefreshingData) {
+            return;
+          }
           setState(() {
             _selectedIndex = index;
           });
@@ -225,11 +322,6 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.emoji_events_outlined),
             selectedIcon: Icon(Icons.emoji_events),
             label: 'Campeonatos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sports_soccer_outlined),
-            selectedIcon: Icon(Icons.sports_soccer),
-            label: 'Partidos',
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-package com.example.mrrichar_app
+package com.example.scripts
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mrrichar_app/data/excel_data_source.dart';
+import 'package:mrrichar_app/features/rankings/rankings_page.dart';
 import 'package:mrrichar_app/widgets/team_logo_avatar.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -48,6 +49,7 @@ class _DashboardPageState extends State<DashboardPage> {
         final selectedCode = widget.defaultPlayerCode;
         final selectedName = _resolveSelectedName(data, selectedCode);
         final selectedLogoUrl = _resolveSelectedLogoUrl(data, selectedCode);
+        final hasSelectedPlayer = selectedCode != null && selectedCode.isNotEmpty;
         final playerTournaments = _countPlayerTournaments(data, selectedCode);
         final wonTournaments = _countWonTournaments(data, selectedCode);
         final activeTournaments = _activeTournaments(data);
@@ -65,7 +67,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 Card(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: widget.onOpenSettings,
+                    onTap: () => _openSelectedPlayerDetail(data, selectedCode),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                       child: Column(
@@ -83,6 +85,14 @@ class _DashboardPageState extends State<DashboardPage> {
                                   fontWeight: FontWeight.w700,
                                 ),
                           ),
+                          if (!hasSelectedPlayer) ...[
+                            const SizedBox(height: 10),
+                            ElevatedButton.icon(
+                              onPressed: widget.onOpenSettings,
+                              icon: const Icon(Icons.settings),
+                              label: const Text('Ir a Configuracion'),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -254,6 +264,49 @@ class _DashboardPageState extends State<DashboardPage> {
         )
         .take(6)
         .toList(growable: false);
+  }
+
+  void _openSelectedPlayerDetail(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      widget.onOpenSettings();
+      return;
+    }
+
+    ChampionshipStatsRanking? tournamentPlayer;
+    for (final player in data.championshipStatsRankings) {
+      if (player.playerCode == selectedCode) {
+        tournamentPlayer = player;
+        break;
+      }
+    }
+
+    if (tournamentPlayer != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChampionshipPlayerDetailPage(player: tournamentPlayer!),
+        ),
+      );
+      return;
+    }
+
+    PlayerRanking? communityPlayer;
+    for (final player in data.communityRankings) {
+      if (player.playerCode == selectedCode) {
+        communityPlayer = player;
+        break;
+      }
+    }
+
+    if (communityPlayer != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CommunityPlayerDetailPage(player: communityPlayer!),
+        ),
+      );
+      return;
+    }
+
+    widget.onOpenSettings();
   }
 }
 

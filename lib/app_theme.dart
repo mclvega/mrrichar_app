@@ -14,6 +14,8 @@ class AppTheme {
   static ThemeData lightTheme = ThemeData(
     primarySwatch: Colors.blue,
     primaryColor: primaryColor,
+    scaffoldBackgroundColor: Colors.transparent,
+    canvasColor: Colors.transparent,
     colorScheme: const ColorScheme.light(
       primary: primaryColor,
       secondary: secondaryColor,
@@ -94,10 +96,10 @@ class AppTheme {
       ),
     ),
     tabBarTheme: const TabBarThemeData(
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white70,
+      labelColor: Colors.black,
+      unselectedLabelColor: Colors.white,
       indicator: BoxDecoration(
-        color: primaryColor,
+        color: Colors.white,
         borderRadius: BorderRadius.all(Radius.circular(10)),
       ),
       indicatorSize: TabBarIndicatorSize.tab,
@@ -118,6 +120,16 @@ class AppTheme {
         }
         return const IconThemeData(color: Colors.white70);
       }),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _LoadingPageTransitionsBuilder(),
+        TargetPlatform.iOS: _LoadingPageTransitionsBuilder(),
+        TargetPlatform.linux: _LoadingPageTransitionsBuilder(),
+        TargetPlatform.macOS: _LoadingPageTransitionsBuilder(),
+        TargetPlatform.windows: _LoadingPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: _LoadingPageTransitionsBuilder(),
+      },
     ),
     dividerTheme: const DividerThemeData(
       color: Colors.grey,
@@ -237,3 +249,146 @@ class AppTheme {
     color: Colors.black54,
   );
 }
+
+class _LoadingPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _LoadingPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final slideAnimation = Tween<Offset>(
+      begin: const Offset(0.22, 0.0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeInOutCubic,
+        reverseCurve: Curves.easeInOutCubic,
+      ),
+    );
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        animation.status == AnimationStatus.reverse
+            ? child
+            : SlideTransition(
+                position: slideAnimation,
+                child: child,
+              ),
+        _TimedLoadingOverlay(
+          primaryAnimation: animation,
+          secondaryAnimation: secondaryAnimation,
+        ),
+      ],
+    );
+  }
+}
+
+class _TimedLoadingOverlay extends StatefulWidget {
+  const _TimedLoadingOverlay({
+    required this.primaryAnimation,
+    required this.secondaryAnimation,
+  });
+
+  final Animation<double> primaryAnimation;
+  final Animation<double> secondaryAnimation;
+
+  @override
+  State<_TimedLoadingOverlay> createState() => _TimedLoadingOverlayState();
+}
+
+class _TimedLoadingOverlayState extends State<_TimedLoadingOverlay> {
+  bool _visible = true;
+  int _hideToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.primaryAnimation.addStatusListener(_onPrimaryStatusChanged);
+    widget.secondaryAnimation.addStatusListener(_onSecondaryStatusChanged);
+    _showForOneSecond();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimedLoadingOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.primaryAnimation != widget.primaryAnimation) {
+      oldWidget.primaryAnimation.removeStatusListener(_onPrimaryStatusChanged);
+      widget.primaryAnimation.addStatusListener(_onPrimaryStatusChanged);
+    }
+    if (oldWidget.secondaryAnimation != widget.secondaryAnimation) {
+      oldWidget.secondaryAnimation.removeStatusListener(_onSecondaryStatusChanged);
+      widget.secondaryAnimation.addStatusListener(_onSecondaryStatusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.primaryAnimation.removeStatusListener(_onPrimaryStatusChanged);
+    widget.secondaryAnimation.removeStatusListener(_onSecondaryStatusChanged);
+    super.dispose();
+  }
+
+  void _onPrimaryStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) {
+      _showForOneSecond();
+    }
+  }
+
+  void _onSecondaryStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) {
+      _showForOneSecond();
+    }
+  }
+
+  void _showForOneSecond() {
+    _hideToken += 1;
+    final currentToken = _hideToken;
+    if (!_visible) {
+      setState(() {
+        _visible = true;
+      });
+    }
+
+    Future<void>.delayed(const Duration(milliseconds: 350), () {
+      if (!mounted || currentToken != _hideToken) {
+        return;
+      }
+      setState(() {
+        _visible = false;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) {
+      return const SizedBox.shrink();
+    }
+
+    return IgnorePointer(
+      child: ColoredBox(
+        color: AppTheme.primaryColor,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppTheme.buildAppLogo(
+                width: 150,
+                height: 150,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

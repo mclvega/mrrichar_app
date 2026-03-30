@@ -11,6 +11,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Excel generado correctamente en assets/data/virtual_football_data.xlsx
+echo Excel generado correctamente en assets/data/mrrichar_data.xlsx
 popd >nul
 endlocal

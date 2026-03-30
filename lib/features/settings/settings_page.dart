@@ -52,9 +52,25 @@ class _SettingsPageState extends State<SettingsPage> {
           }
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            itemCount: players.length,
+            itemCount: players.length + 1,
             itemBuilder: (context, index) {
-              final player = players[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Center(
+                    child: Text(
+                      'Selecciona un jugador por defecto',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                    ),
+                  ),
+                );
+              }
+
+              final player = players[index - 1];
               final isSelected = player.code == _selectedPlayerCode;
               final cardColor = isSelected ? Theme.of(context).colorScheme.primary : Colors.white;
               final textColor = isSelected ? Colors.white : Colors.black;
@@ -108,13 +124,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   List<_PlayerOption> _buildPlayerList(AppTournamentData data) {
-    final communityByCode = {
-      for (final p in data.communityRankings) p.playerCode: p,
-    };
-    final tournamentByCode = {
-      for (final p in data.championshipStatsRankings) p.playerCode: p,
-    };
-
     final byCode = <String, _PlayerOption>{};
 
     for (final p in data.communityRankings) {

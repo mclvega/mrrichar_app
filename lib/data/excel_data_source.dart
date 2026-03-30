@@ -201,10 +201,10 @@ class ExcelDataSource {
   ExcelDataSource._();
 
   static final ExcelDataSource instance = ExcelDataSource._();
-  static const String _assetPath = 'assets/data/virtual_football_data.xlsx';
+  static const String _assetPath = 'assets/data/mrrichar_data.xlsx';
   static const String _remoteExcelUrl =
       'https://docs.google.com/spreadsheets/d/1wFG-BvNw3XdA96mGC0DGO1Zm_wl-hvGO/export?format=xlsx';
-  static const String _localExcelFileName = 'virtual_football_data_remote.xlsx';
+  static const String _localExcelFileName = 'mrrichar_data_remote.xlsx';
 
   Future<AppTournamentData>? _cachedLoad;
 

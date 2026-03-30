@@ -9,33 +9,18 @@ class TeamLogoAvatar extends StatelessWidget {
   });
 
   final double size;
+  // Kept for API compatibility, but the app now uses one official offline logo.
   final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
-    final safeImageUrl = imageUrl?.trim();
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(size * 0.22),
-      child: (safeImageUrl != null && safeImageUrl.isNotEmpty)
-          ? Image.network(
-              safeImageUrl,
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return AppTheme.buildAppLogo(
-                  width: size,
-                  height: size,
-                  fit: BoxFit.cover,
-                );
-              },
-            )
-          : AppTheme.buildAppLogo(
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-            ),
+      child: AppTheme.buildAppLogo(
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
     );
   }
 }
