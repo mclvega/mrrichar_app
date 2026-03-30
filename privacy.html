@@ -94,7 +94,7 @@
         <li><strong>Configuracion local:</strong> se almacena localmente el jugador seleccionado por defecto.</li>
         <li><strong>Datos de campeonatos:</strong> al iniciar, la App intenta descargar un archivo Excel publicado por el responsable de la App desde Google Sheets (formato XLSX) y lo guarda en una copia local del dispositivo.</li>
         <li><strong>Copia local de datos:</strong> la App usa como fuente principal la ultima copia local descargada. Si la descarga falla, utiliza la copia local existente; y como respaldo, puede usar el archivo de datos incluido en la aplicacion.</li>
-        <li><strong>Recursos visuales:</strong> en el primer inicio se pueden descargar imagenes (logo/fondo) para cache local y mejorar rendimiento.</li>
+        <li><strong>Recursos visuales de app:</strong> el logo principal y el fondo global se incluyen dentro de la aplicacion (assets locales) y no se descargan desde internet.</li>
       </ul>
 
       <h2>3. Datos personales</h2>
@@ -109,7 +109,7 @@
         <li>Mostrar estadisticas y contenido de campeonatos.</li>
         <li>Mantener los datos deportivos actualizados mediante sincronizacion al iniciar la App.</li>
         <li>Guardar preferencias del usuario para mejorar la experiencia.</li>
-        <li>Cargar recursos visuales de forma eficiente (cache local).</li>
+        <li>Mostrar recursos visuales incluidos en la aplicacion para mantener consistencia de interfaz.</li>
       </ul>
 
       <h2>5. Base legal</h2>
@@ -125,7 +125,7 @@
       </p>
       <p>
         Para la distribucion de datos de campeonatos, la App consume un archivo hospedado en infraestructura de Google (Google Sheets en formato de exportacion XLSX).
-        Este consumo es tecnico y necesario para actualizar el contenido mostrado.
+        Este consumo es tecnico y necesario para actualizar el contenido mostrado. La App no envia registros de cuenta del usuario, ni formularios de perfil, ni datos de pago.
       </p>
 
       <h2>7. Conservacion</h2>
@@ -143,26 +143,32 @@
         Ningun metodo de almacenamiento o transmision es 100% seguro.
       </p>
 
-      <h2>9. Menores de edad</h2>
+      <h2>9. Permisos y conectividad</h2>
+      <p>
+        La App utiliza conectividad de red para descargar el archivo XLSX de datos deportivos cuando hay sincronizacion disponible.
+        Fuera de eso, puede funcionar con datos locales previamente guardados o con el archivo incluido en assets.
+      </p>
+
+      <h2>10. Menores de edad</h2>
       <p>
         La App no esta dirigida especificamente a menores de 13 anos.
         Si detectamos tratamiento no intencional de datos de menores,
         tomaremos medidas para su eliminacion.
       </p>
 
-      <h2>10. Derechos del usuario</h2>
+      <h2>11. Derechos del usuario</h2>
       <p>
         Puedes solicitar informacion sobre privacidad o ejercer derechos aplicables
         escribiendo a <a href="mailto:mclvegadev@gmail.com">mclvegadev@gmail.com</a>.
       </p>
 
-      <h2>11. Cambios a esta politica</h2>
+      <h2>12. Cambios a esta politica</h2>
       <p>
         Podemos actualizar esta Politica de Privacidad para reflejar cambios tecnicos,
         legales o de producto. La fecha de "Ultima actualizacion" indicara la version vigente.
       </p>
 
-      <h2>12. Contacto</h2>
+      <h2>13. Contacto</h2>
       <p>
         Para dudas sobre esta politica, escribe a:
         <a href="mailto:mclvegadev@gmail.com">mclvegadev@gmail.com</a>

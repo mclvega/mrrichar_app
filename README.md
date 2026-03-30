@@ -1,57 +1,60 @@
 # MRRichar App
 
-Aplicacion Flutter para gestion y seguimiento de campeonatos, rankings y partidos.
+Aplicacion Flutter para seguimiento de campeonatos, rankings y partidos.
 
 ## Resumen
 
 La app permite:
 
-- Seleccionar un jugador por defecto para personalizar el inicio.
-- Ver tablero de inicio con resumen del jugador, torneos activos y proximos encuentros.
-- Consultar rankings y campeonatos.
-- Navegar por fases de grupo y eliminacion.
-- Ver detalles de partidos y sus ventanas de tiempo (inicio y termino).
+- Seleccionar un jugador por defecto en configuracion.
+- Ver el inicio personalizado con resumen del jugador.
+- Consultar rankings de comunidad y campeonatos.
+- Explorar campeonatos por grupos y fase eliminatoria.
+- Abrir detalle de partidos con fecha/ventana de tiempo cuando existe.
 
-## Fuente de datos
+## Datos y sincronizacion
 
-La app trabaja con un archivo Excel (XLSX) y usa este flujo:
+La fuente de datos es un archivo Excel (XLSX):
 
-1. Al iniciar, intenta descargar el Excel desde Google Sheets.
-2. Guarda una copia local en el dispositivo.
-3. Usa la copia local como fuente principal.
-4. Si falla la descarga, usa la ultima copia local valida.
-5. Si no existe copia local, usa el Excel incluido en assets.
+1. Al iniciar, la app intenta sincronizar desde Google Sheets.
+2. Si la descarga es exitosa, guarda una copia local en el dispositivo.
+3. La lectura se hace primero desde la copia local.
+4. Si no hay copia local valida, usa el archivo incluido en assets.
 
-URL actual de sincronizacion:
+URL de sincronizacion actual:
 
-- `https://docs.google.com/spreadsheets/d/1wFG-BvNw3XdA96mGC0DGO1Zm_wl-hvGO/export?format=xlsx`
+- https://docs.google.com/spreadsheets/d/1wFG-BvNw3XdA96mGC0DGO1Zm_wl-hvGO/export?format=xlsx
 
-Implementacion principal:
+Implementacion:
 
-- [ExcelDataSource](lib/data/excel_data_source.dart)
+- [lib/data/excel_data_source.dart](lib/data/excel_data_source.dart)
 
-## Modelado y reglas
+## Recursos visuales
 
-- Las tablas globales y por grupo se calculan automaticamente a partir de resultados de partidos.
-- Los partidos soportan `startDate` y `endDate` (si faltan, no se muestran placeholders).
-- Jugadores y campeonatos soportan `logoUrl`.
+- El logo principal de la app y el fondo global se cargan desde assets locales.
+- No se descargan desde internet en runtime.
+- Si un logo de jugador/torneo no existe o falla, se usa fallback visual.
+
+Implementacion:
+
+- [lib/data/app_image_cache.dart](lib/data/app_image_cache.dart)
 
 ## Estructura principal
 
-- [main.dart](lib/main.dart): arranque, pantalla de carga y bootstrap.
-- [excel_data_source.dart](lib/data/excel_data_source.dart): lectura/parsing/sincronizacion de datos.
-- [local_settings_db.dart](lib/data/local_settings_db.dart): configuracion local (jugador por defecto).
-- [dashboard_page.dart](lib/features/dashboard/dashboard_page.dart): pantalla de inicio.
-- [championships_page.dart](lib/features/championships/championships_page.dart): campeonatos y tablas.
-- [matches_page.dart](lib/features/matches/matches_page.dart): listado y detalle de partidos.
-- [settings_page.dart](lib/features/settings/settings_page.dart): seleccion de jugador.
+- [lib/main.dart](lib/main.dart): arranque, bootstrap y navegacion principal.
+- [lib/features/dashboard/dashboard_page.dart](lib/features/dashboard/dashboard_page.dart): inicio.
+- [lib/features/rankings/rankings_page.dart](lib/features/rankings/rankings_page.dart): rankings y detalle.
+- [lib/features/championships/championships_page.dart](lib/features/championships/championships_page.dart): campeonatos, grupos y eliminacion.
+- [lib/features/matches/matches_page.dart](lib/features/matches/matches_page.dart): partidos y detalle.
+- [lib/features/settings/settings_page.dart](lib/features/settings/settings_page.dart): jugador por defecto.
+- [lib/data/local_settings_db.dart](lib/data/local_settings_db.dart): persistencia local de ajustes.
 
 ## Ejecutar en local
 
 Requisitos:
 
 - Flutter SDK instalado.
-- Dispositivo Android, emulador o escritorio compatible.
+- Dispositivo Android/emulador o plataforma de escritorio compatible.
 
 Comandos:
 
@@ -60,28 +63,29 @@ flutter pub get
 flutter run
 ```
 
-## Generar Excel de ejemplo
+## Generar el Excel de ejemplo
 
-Script de generacion:
+Script principal:
 
 - [tool/generate_excel.dart](tool/generate_excel.dart)
 
-Desde `scripts/`:
+Desde la carpeta scripts:
 
 ```powershell
 .\generate_excel.bat
 ```
 
-Salida:
+Archivo generado:
 
-- `assets/data/mrrichar_data.xlsx`
+- assets/data/mrrichar_data.xlsx
 
 ## Publicacion
 
 - Politica de privacidad: [privacy.html](privacy.html)
-- Permiso de red Android: [AndroidManifest.xml](android/app/src/main/AndroidManifest.xml)
+- Permiso de red Android: [android/app/src/main/AndroidManifest.xml](android/app/src/main/AndroidManifest.xml)
 
-## Notas
+## Build release
 
-- La app usa cache local para imagen de fondo y logo global de app.
-- Si una URL de logo por jugador/torneo falla o esta vacia, se usa fallback visual.
+```bash
+flutter build appbundle
+```
