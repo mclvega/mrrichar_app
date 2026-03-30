@@ -46,169 +46,260 @@ class _DashboardPageState extends State<DashboardPage> {
 
         final data = snapshot.data!;
         final selectedCode = widget.defaultPlayerCode;
+        final selectedName = _resolveSelectedName(data, selectedCode);
+        final playerTournaments = _countPlayerTournaments(data, selectedCode);
+        final wonTournaments = _countWonTournaments(data, selectedCode);
+        final activeTournaments = _activeTournaments(data);
+        final upcomingMatches = _upcomingMatches(data, selectedCode);
+        final championshipNamesByCode = {
+          for (final c in data.championships) c.code: c.name,
+        };
 
-        if (selectedCode == null || selectedCode.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.person_search, size: 52),
-                  const SizedBox(height: 10),
-                  Text(
-                    'No hay jugador por defecto seleccionado.',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Selecciona un jugador desde el boton Config de arriba o usa el acceso rapido aqui.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 14),
-                  ElevatedButton.icon(
-                    onPressed: widget.onOpenSettings,
-                    icon: const Icon(Icons.settings),
-                    label: const Text('Acceso rapido a Configuracion'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        final community = data.communityRankings
-            .where((p) => p.playerCode == selectedCode)
-            .cast<PlayerRanking?>()
-            .firstOrNull;
-        final tournament = data.championshipStatsRankings
-            .where((p) => p.playerCode == selectedCode)
-            .cast<ChampionshipStatsRanking?>()
-            .firstOrNull;
-
-        final selectedName = community?.name ?? tournament?.name ?? selectedCode;
-        final playerMatches = data.matches
-            .where((m) => m.homePlayerCode == selectedCode || m.awayPlayerCode == selectedCode)
-            .toList(growable: false);
-        final nextMatch = playerMatches.isEmpty ? null : playerMatches.first;
-
-        final wonCups = data.championships
-            .where((c) => c.championPlayerCode == selectedCode)
-            .toList(growable: false);
-
-        final activeCups = data.championships.where((c) {
-          final status = c.status.toLowerCase();
-          return status.contains('activo') || status.contains('curso');
-        }).length;
-
-        final cards = [
-          _DashboardCardData(
-            title: 'Jugador por defecto',
-            value: selectedName,
-            subtitle: 'Perfil seleccionado',
-            icon: Icons.person,
-          ),
-          _DashboardCardData(
-            title: 'Ranking Torneo',
-            value: tournament != null ? '#${tournament.position}' : '-',
-            subtitle: tournament != null
-                ? 'Titulos: ${tournament.titles} | Puntos: ${tournament.points}'
-                : 'Sin datos en ranking de torneo',
-            icon: Icons.emoji_events,
-          ),
-          _DashboardCardData(
-            title: 'Ranking Comunidad',
-            value: community != null ? '#${community.position}' : '-',
-            subtitle:
-                community != null ? 'Puntos: ${community.points}' : 'Sin datos en comunidad',
-            icon: Icons.groups,
-          ),
-          _DashboardCardData(
-            title: 'Copas activas',
-            value: '$activeCups',
-            subtitle: 'Torneos actualmente en curso',
-            icon: Icons.sports_score,
-          ),
-          _DashboardCardData(
-            title: 'Copas ganadas',
-            value: '${wonCups.length}',
-            subtitle: wonCups.isEmpty
-                ? 'Aun no registra titulos'
-                : wonCups.take(2).map((c) => c.name).join(' | '),
-            icon: Icons.workspace_premium,
-          ),
-          _DashboardCardData(
-            title: 'Proximo Partido',
-            value: nextMatch != null
-                ? '${nextMatch.homePlayer} vs ${nextMatch.awayPlayer}'
-                : '-',
-            subtitle: nextMatch?.schedule ?? 'Sin partidos para este jugador',
-            icon: Icons.sports_soccer,
-          ),
-        ];
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: cards.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final item = cards[index];
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Icon(
-                    item.icon,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                ),
-                title: Text(item.title),
-                subtitle: Text(item.subtitle),
-                trailing: SizedBox(
-                  width: 170,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (item.title == 'Top Equipo' || item.title == 'Proximo Partido') ...[
-                        const TeamLogoAvatar(size: 20),
-                        const SizedBox(width: 6),
-                      ] else if (item.title == 'Jugador por defecto') ...[
-                        const TeamLogoAvatar(size: 20),
-                        const SizedBox(width: 6),
-                      ],
-                      Expanded(
-                        child: Text(
-                          item.value,
-                          textAlign: TextAlign.right,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: widget.onOpenSettings,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const TeamLogoAvatar(size: 120),
+                          const SizedBox(height: 14),
+                          Text(
+                            selectedName,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _IndicatorChip(
+                                label: 'Torneos jugador',
+                                value: '$playerTournaments',
+                              ),
+                              const SizedBox(width: 8),
+                              _IndicatorChip(
+                                label: 'Ganados',
+                                value: '$wonTournaments',
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Torneos activos',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (activeTournaments.isEmpty)
+                          const Text('No hay torneos activos.')
+                        else
+                          ...activeTournaments.map(
+                            (item) => _ListInfoRow(
+                              title: item.name,
+                              subtitle: item.status,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Proximas fechas por jugar',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (selectedCode == null || selectedCode.isEmpty)
+                          const Text('Selecciona un jugador desde Configuracion.')
+                        else if (upcomingMatches.isEmpty)
+                          const Text('No hay partidos pendientes para este jugador.')
+                        else
+                          ...upcomingMatches.map((match) {
+                            final tournamentName =
+                                championshipNamesByCode[match.championshipCode] ??
+                                    match.championshipCode;
+                            final timeLabel = match.timeWindowLabel;
+                            final subtitle = timeLabel.isEmpty
+                                ? tournamentName
+                                : '$tournamentName | $timeLabel';
+                            return _ListInfoRow(
+                              title: '${match.homePlayer} vs ${match.awayPlayer}',
+                              subtitle: subtitle,
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
+
+  String _resolveSelectedName(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      return 'Sin jugador seleccionado';
+    }
+
+    final community = data.communityRankings
+        .where((p) => p.playerCode == selectedCode)
+        .cast<PlayerRanking?>()
+        .firstOrNull;
+    final tournament = data.championshipStatsRankings
+        .where((p) => p.playerCode == selectedCode)
+        .cast<ChampionshipStatsRanking?>()
+        .firstOrNull;
+
+    return community?.name ?? tournament?.name ?? selectedCode;
+  }
+
+  int _countPlayerTournaments(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      return 0;
+    }
+
+    final championshipCodes = data.matches
+        .where((m) => m.homePlayerCode == selectedCode || m.awayPlayerCode == selectedCode)
+        .map((m) => m.championshipCode)
+        .toSet();
+
+    return championshipCodes.length;
+  }
+
+  int _countWonTournaments(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      return 0;
+    }
+
+    return data.championships.where((c) => c.championPlayerCode == selectedCode).length;
+  }
+
+  List<ChampionshipInfo> _activeTournaments(AppTournamentData data) {
+    return data.championships.where((c) {
+      final status = c.status.toLowerCase();
+      return status.contains('activo') || status.contains('curso');
+    }).toList(growable: false);
+  }
+
+  List<MatchInfo> _upcomingMatches(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      return const [];
+    }
+
+    return data.matches
+        .where(
+          (m) =>
+              (m.homePlayerCode == selectedCode || m.awayPlayerCode == selectedCode) &&
+              m.homeGoals == null &&
+              m.awayGoals == null,
+        )
+        .take(6)
+        .toList(growable: false);
+  }
 }
 
-class _DashboardCardData {
-  const _DashboardCardData({
-    required this.title,
+class _IndicatorChip extends StatelessWidget {
+  const _IndicatorChip({
+    required this.label,
     required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _ListInfoRow extends StatelessWidget {
+  const _ListInfoRow({
+    required this.title,
     required this.subtitle,
-    required this.icon,
   });
 
   final String title;
-  final String value;
   final String subtitle;
-  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Icon(Icons.circle, size: 8),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

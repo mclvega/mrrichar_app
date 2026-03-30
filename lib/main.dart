@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mrrichar_app/app_theme.dart';
+import 'package:mrrichar_app/data/app_image_cache.dart';
+import 'package:mrrichar_app/data/excel_data_source.dart';
 import 'package:mrrichar_app/data/local_settings_db.dart';
 import 'package:mrrichar_app/features/championships/championships_page.dart';
 import 'package:mrrichar_app/features/dashboard/dashboard_page.dart';
@@ -14,6 +16,13 @@ void main() {
 class VirtualFootballApp extends StatelessWidget {
   const VirtualFootballApp({super.key});
 
+  Future<_AppBootstrapResult> _bootstrapApp() async {
+    await AppImageCache.instance.initialize();
+    await ExcelDataSource.instance.loadData();
+    final defaultCode = await LocalSettingsDb.instance.getDefaultPlayerCode();
+    return _AppBootstrapResult(defaultPlayerCode: defaultCode);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -26,13 +35,104 @@ class VirtualFootballApp extends StatelessWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: const HomePage(),
+      home: StartupLoadingPage(
+        bootstrapFuture: _bootstrapApp(),
+      ),
     );
   }
 }
 
+class StartupLoadingPage extends StatelessWidget {
+  const StartupLoadingPage({
+    super.key,
+    required this.bootstrapFuture,
+  });
+
+  final Future<_AppBootstrapResult> bootstrapFuture;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_AppBootstrapResult>(
+      future: bootstrapFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Scaffold(
+            backgroundColor: AppTheme.primaryColor,
+            body: Center(
+              child: AppTheme.buildAppLogo(
+                width: 160,
+                height: 160,
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Scaffold(
+            backgroundColor: AppTheme.primaryColor,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white, size: 56),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No se pudo completar la carga inicial.',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (_) => StartupLoadingPage(
+                              bootstrapFuture: Future<_AppBootstrapResult>.microtask(
+                                () async {
+                                  await AppImageCache.instance.initialize();
+                                  await ExcelDataSource.instance.loadData();
+                                  final defaultCode = await LocalSettingsDb.instance
+                                      .getDefaultPlayerCode();
+                                  return _AppBootstrapResult(
+                                    defaultPlayerCode: defaultCode,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return HomePage(initialDefaultPlayerCode: snapshot.data!.defaultPlayerCode);
+      },
+    );
+  }
+}
+
+class _AppBootstrapResult {
+  const _AppBootstrapResult({required this.defaultPlayerCode});
+
+  final String? defaultPlayerCode;
+}
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    this.initialDefaultPlayerCode,
+  });
+
+  final String? initialDefaultPlayerCode;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -41,45 +141,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String? _defaultPlayerCode;
-  bool _isLoadingDefaultPlayer = true;
+  bool _isLoadingDefaultPlayer = false;
 
   @override
   void initState() {
     super.initState();
-    _loadDefaultPlayer();
-  }
-
-  Future<void> _loadDefaultPlayer() async {
-    final savedCode = await LocalSettingsDb.instance.getDefaultPlayerCode();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _defaultPlayerCode = savedCode;
-      _isLoadingDefaultPlayer = false;
-    });
+    _defaultPlayerCode = widget.initialDefaultPlayerCode;
   }
 
   Future<void> _openSettings() async {
     final selected = await Navigator.of(context).push<String?>(
-      PageRouteBuilder<String?>(
-        opaque: false,
-        transitionDuration: const Duration(milliseconds: 220),
-        reverseTransitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (context, animation, secondaryAnimation) {
+      MaterialPageRoute<String?>(
+        builder: (context) {
           return SettingsPage(
             initialDefaultPlayerCode: _defaultPlayerCode,
-          );
-        },
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return FadeTransition(
-            opacity: curved,
-            child: child,
           );
         },
       ),

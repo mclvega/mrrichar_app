@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mrrichar_app/app_links.dart';
+import 'package:mrrichar_app/data/app_image_cache.dart';
 
 class AppTheme {
   const AppTheme._();
@@ -10,9 +10,6 @@ class AppTheme {
   static const Color backgroundColor = Color(0xFFF5F5F5);
   static const Color surfaceColor = Colors.white;
   static const Color errorColor = Color(0xFFD32F2F);
-
-  static const String backgroundImageUrl = AppLinks.appBackgroundImage;
-  static const String logoImageUrl = AppLinks.appLogoImage;
 
   static ThemeData lightTheme = ThemeData(
     primarySwatch: Colors.blue,
@@ -143,22 +140,32 @@ class AppTheme {
   };
 
   static BoxDecoration get backgroundDecoration {
-    return const BoxDecoration(
-      image: DecorationImage(
-        image: NetworkImage(backgroundImageUrl),
-        fit: BoxFit.cover,
-        opacity: 1.0,
-      ),
+    final imageProvider = AppImageCache.instance.backgroundImageProvider;
+
+    return BoxDecoration(
+      color: primaryColor,
+      image: imageProvider == null
+          ? null
+          : DecorationImage(
+              image: imageProvider,
+              fit: BoxFit.cover,
+              opacity: 1.0,
+            ),
     );
   }
 
   static BoxDecoration get prominentBackgroundDecoration {
-    return const BoxDecoration(
-      image: DecorationImage(
-        image: NetworkImage(backgroundImageUrl),
-        fit: BoxFit.cover,
-        opacity: 1.0,
-      ),
+    final imageProvider = AppImageCache.instance.backgroundImageProvider;
+
+    return BoxDecoration(
+      color: primaryColor,
+      image: imageProvider == null
+          ? null
+          : DecorationImage(
+              image: imageProvider,
+              fit: BoxFit.cover,
+              opacity: 1.0,
+            ),
     );
   }
 
@@ -166,33 +173,18 @@ class AppTheme {
     double? width,
     double? height,
     BoxFit fit = BoxFit.contain,
-    String? imageUrl,
+    ImageProvider? imageProvider,
   }) {
-    final resolvedImageUrl = imageUrl ?? logoImageUrl;
+    final provider = imageProvider ?? AppImageCache.instance.logoImageProvider;
+    if (provider == null) {
+      return _buildFallbackLogo(width, height);
+    }
 
-    return Image.network(
-      resolvedImageUrl,
+    return Image(
+      image: provider,
       width: width,
       height: height,
       fit: fit,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          return child;
-        }
-        return SizedBox(
-          width: width,
-          height: height,
-          child: Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-            ),
-          ),
-        );
-      },
       errorBuilder: (context, error, stackTrace) {
         return _buildFallbackLogo(width, height);
       },

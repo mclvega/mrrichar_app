@@ -802,21 +802,24 @@ class TeamMatchesInGroupPage extends StatelessWidget {
             )
           else
             ...teamMatches.map(
-              (m) => Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: ListTile(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => MatchDetailPage(match: m),
-                      ),
-                    );
-                  },
-                  leading: const Icon(Icons.sports_soccer),
-                  title: Text('${m.homePlayer} vs ${m.awayPlayer}'),
-                  subtitle: Text(m.schedule),
-                ),
-              ),
+              (m) {
+                final timeLabel = m.timeWindowLabel;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => MatchDetailPage(match: m),
+                        ),
+                      );
+                    },
+                    leading: const Icon(Icons.sports_soccer),
+                    title: Text('${m.homePlayer} vs ${m.awayPlayer}'),
+                    subtitle: timeLabel.isEmpty ? null : Text(timeLabel),
+                  ),
+                );
+              },
             ),
         ],
       ),

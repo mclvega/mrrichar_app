@@ -131,6 +131,8 @@ class MatchInfo {
     required this.awayPlayerCode,
     required this.awayPlayer,
     required this.schedule,
+    this.startDate,
+    this.endDate,
     required this.homeGoals,
     required this.awayGoals,
   });
@@ -143,8 +145,26 @@ class MatchInfo {
   final String awayPlayerCode;
   final String awayPlayer;
   final String schedule;
+  final String? startDate;
+  final String? endDate;
   final int? homeGoals;
   final int? awayGoals;
+
+  String get timeWindowLabel {
+    final hasStart = startDate != null && startDate!.trim().isNotEmpty;
+    final hasEnd = endDate != null && endDate!.trim().isNotEmpty;
+
+    if (hasStart && hasEnd) {
+      return '${startDate!} - ${endDate!}';
+    }
+    if (hasStart) {
+      return startDate!;
+    }
+    if (hasEnd) {
+      return endDate!;
+    }
+    return schedule.trim();
+  }
 }
 
 class AppTournamentData {
@@ -378,19 +398,50 @@ class ExcelDataSource {
       return const [];
     }
 
+    final rowsData = sheet.rows;
+    if (rowsData.isEmpty) {
+      return const [];
+    }
+
+    final headers = _buildHeaderIndex(rowsData.first);
+    final championshipCodeIndex = _columnIndex(headers, ['championshipcode'], 0);
+    final phaseCodeIndex = _columnIndex(headers, ['phasecode'], 1);
+    final groupNameIndex = _columnIndex(headers, ['groupname'], 2);
+    final homePlayerCodeIndex = _columnIndex(headers, ['homeplayercode'], 3);
+    final awayPlayerCodeIndex = _columnIndex(headers, ['awayplayercode'], 4);
+    final scheduleIndex = _columnIndex(headers, ['schedule'], 5);
+    final startDateIndex = _columnIndex(
+      headers,
+      ['startdate', 'fechainicio', 'fecha_inicio', 'inicio'],
+      null,
+    );
+    final endDateIndex = _columnIndex(
+      headers,
+      ['enddate', 'fechatermino', 'fecha_termino', 'fin', 'fecha_final'],
+      null,
+    );
+    final homeGoalsIndex = _columnIndex(headers, ['homegoals'], 6);
+    final awayGoalsIndex = _columnIndex(headers, ['awaygoals'], 7);
+
     final rows = <MatchInfo>[];
-    for (final row in sheet.rows.skip(1)) {
-      final championshipCode = _readCell(row, 0);
-      final phaseCode = _readCell(row, 1);
-      final groupName = _readCell(row, 2);
-      final homePlayerCode = _readCell(row, 3);
-      final awayPlayerCode = _readCell(row, 4);
-      final schedule = _readCell(row, 5);
-      final homeGoals = int.tryParse(_readCell(row, 6));
-      final awayGoals = int.tryParse(_readCell(row, 7));
+    for (final row in rowsData.skip(1)) {
+      final championshipCode = _readCell(row, championshipCodeIndex);
+      final phaseCode = _readCell(row, phaseCodeIndex);
+      final groupName = _readCell(row, groupNameIndex);
+      final homePlayerCode = _readCell(row, homePlayerCodeIndex);
+      final awayPlayerCode = _readCell(row, awayPlayerCodeIndex);
+      final schedule = _readCell(row, scheduleIndex);
+      final startDate = _readCellNullable(row, startDateIndex);
+      final endDate = _readCellNullable(row, endDateIndex);
+      final homeGoals = int.tryParse(_readCell(row, homeGoalsIndex));
+      final awayGoals = int.tryParse(_readCell(row, awayGoalsIndex));
 
       final homePlayer = playersByCode[homePlayerCode]?.name ?? homePlayerCode;
       final awayPlayer = playersByCode[awayPlayerCode]?.name ?? awayPlayerCode;
+
+      final resolvedSchedule = schedule.isNotEmpty
+          ? schedule
+          : _buildScheduleFromWindow(startDate, endDate);
 
       if (championshipCode.isEmpty ||
           phaseCode.isEmpty ||
@@ -408,7 +459,9 @@ class ExcelDataSource {
           homePlayer: homePlayer,
           awayPlayerCode: awayPlayerCode,
           awayPlayer: awayPlayer,
-          schedule: schedule,
+          schedule: resolvedSchedule,
+          startDate: startDate,
+          endDate: endDate,
           homeGoals: homeGoals,
           awayGoals: awayGoals,
         ),
@@ -519,13 +572,73 @@ class ExcelDataSource {
   }
 
   String _readCell(List<Data?> row, int index) {
-    if (index >= row.length) {
+    if (index < 0 || index >= row.length) {
       return '';
     }
 
     final cell = row[index];
     final value = cell?.value;
     return value?.toString().trim() ?? '';
+  }
+
+  String? _readCellNullable(List<Data?> row, int? index) {
+    if (index == null) {
+      return null;
+    }
+
+    final value = _readCell(row, index);
+    if (value.isEmpty) {
+      return null;
+    }
+    return value;
+  }
+
+  String _buildScheduleFromWindow(String? startDate, String? endDate) {
+    final hasStart = startDate != null && startDate.trim().isNotEmpty;
+    final hasEnd = endDate != null && endDate.trim().isNotEmpty;
+
+    if (hasStart && hasEnd) {
+      return '${startDate!} - ${endDate!}';
+    }
+    if (hasStart) {
+      return startDate!;
+    }
+    if (hasEnd) {
+      return endDate!;
+    }
+    return '';
+  }
+
+  Map<String, int> _buildHeaderIndex(List<Data?> headerRow) {
+    final indexByHeader = <String, int>{};
+
+    for (var i = 0; i < headerRow.length; i++) {
+      final header = _normalizeHeader(_readCell(headerRow, i));
+      if (header.isNotEmpty) {
+        indexByHeader[header] = i;
+      }
+    }
+
+    return indexByHeader;
+  }
+
+  int _columnIndex(Map<String, int> headers, List<String> aliases, int? fallback) {
+    for (final alias in aliases) {
+      final normalizedAlias = _normalizeHeader(alias);
+      final idx = headers[normalizedAlias];
+      if (idx != null) {
+        return idx;
+      }
+    }
+
+    if (fallback != null) {
+      return fallback;
+    }
+    return -1;
+  }
+
+  String _normalizeHeader(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
   }
 }
 

@@ -41,6 +41,7 @@ class _MatchesPageState extends State<MatchesPage> {
           itemCount: matches.length,
           itemBuilder: (context, index) {
             final m = matches[index];
+            final timeLabel = m.timeWindowLabel;
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: ListTile(
@@ -61,7 +62,7 @@ class _MatchesPageState extends State<MatchesPage> {
                     ),
                   ],
                 ),
-                subtitle: Text(m.schedule),
+                subtitle: timeLabel.isEmpty ? null : Text(timeLabel),
               ),
             );
           },
@@ -115,8 +116,10 @@ class MatchDetailPage extends StatelessWidget {
                       Expanded(child: Text('Equipo visitante: ${match.awayPlayer} (${match.awayPlayerCode})')),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text('Horario: ${match.schedule}'),
+                  if (match.timeWindowLabel.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('Horario: ${match.timeWindowLabel}'),
+                  ],
                 ],
               ),
             ),

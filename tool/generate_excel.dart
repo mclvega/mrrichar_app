@@ -6,22 +6,22 @@ void main() {
   final excel = Excel.createExcel();
 
   final teams = <(String, String)>[
-    ('PLY001', 'Real Madrid'),
-    ('PLY002', 'Manchester City'),
-    ('PLY003', 'Bayern Munich'),
-    ('PLY004', 'Chelsea'),
-    ('PLY005', 'Paris Saint-Germain'),
-    ('PLY006', 'Borussia Dortmund'),
-    ('PLY007', 'Inter Milan'),
-    ('PLY008', 'Liverpool'),
-    ('PLY009', 'Arsenal'),
-    ('PLY010', 'Barcelona'),
-    ('PLY011', 'Atletico Madrid'),
-    ('PLY012', 'Napoli'),
-    ('PLY013', 'Juventus'),
-    ('PLY014', 'AC Milan'),
-    ('PLY015', 'Benfica'),
-    ('PLY016', 'Porto'),
+    ('PLY001', 'Jugador 1'),
+    ('PLY002', 'Jugador 2'),
+    ('PLY003', 'Jugador 3'),
+    ('PLY004', 'Jugador 4'),
+    ('PLY005', 'Jugador 5'),
+    ('PLY006', 'Jugador 6'),
+    ('PLY007', 'Jugador 7'),
+    ('PLY008', 'Jugador 8'),
+    ('PLY009', 'Jugador 9'),
+    ('PLY010', 'Jugador 10'),
+    ('PLY011', 'Jugador 11'),
+    ('PLY012', 'Jugador 12'),
+    ('PLY013', 'Jugador 13'),
+    ('PLY014', 'Jugador 14'),
+    ('PLY015', 'Jugador 15'),
+    ('PLY016', 'Jugador 16'),
   ];
 
   final championships = <_CupSeed>[
@@ -248,6 +248,8 @@ void main() {
     TextCellValue('homePlayerCode'),
     TextCellValue('awayPlayerCode'),
     TextCellValue('schedule'),
+    TextCellValue('startDate'),
+    TextCellValue('endDate'),
     TextCellValue('homeGoals'),
     TextCellValue('awayGoals'),
   ]);
@@ -274,6 +276,8 @@ void main() {
             TextCellValue(groupTeams[i]),
             TextCellValue(groupTeams[j]),
             TextCellValue('${cup.code} MD$matchDay 21:00'),
+            TextCellValue('2026-04-${(matchDay + 9).toString().padLeft(2, '0')} 21:00'),
+            TextCellValue('2026-04-${(matchDay + 9).toString().padLeft(2, '0')} 23:00'),
             IntCellValue((i + j + matchDay) % 4),
             IntCellValue((i * 2 + j + 1) % 4),
           ]);
@@ -293,6 +297,8 @@ void main() {
         TextCellValue(top16[i]),
         TextCellValue(top16[15 - i]),
         TextCellValue('${cup.code} Octavos ${i + 1}'),
+        TextCellValue('2026-05-${(i + 1).toString().padLeft(2, '0')} 20:00'),
+        TextCellValue('2026-05-${(i + 1).toString().padLeft(2, '0')} 22:00'),
         IntCellValue((i + 1) % 3),
         IntCellValue((i + 2) % 3),
       ]);
@@ -308,6 +314,8 @@ void main() {
         TextCellValue(quarterTeams[i]),
         TextCellValue(quarterTeams[7 - i]),
         TextCellValue('${cup.code} Cuartos ${i + 1}'),
+        TextCellValue('2026-05-${(i + 11).toString().padLeft(2, '0')} 20:00'),
+        TextCellValue('2026-05-${(i + 11).toString().padLeft(2, '0')} 22:00'),
         IntCellValue((i + 2) % 3),
         IntCellValue((i + 1) % 2),
       ]);
@@ -322,6 +330,8 @@ void main() {
       TextCellValue(semiTeams[0]),
       TextCellValue(semiTeams[3]),
       TextCellValue('${cup.code} Semifinal 1'),
+      TextCellValue('2026-05-20 20:00'),
+      TextCellValue('2026-05-20 22:00'),
       IntCellValue(1),
       IntCellValue(0),
     ]);
@@ -332,6 +342,8 @@ void main() {
       TextCellValue(semiTeams[1]),
       TextCellValue(semiTeams[2]),
       TextCellValue('${cup.code} Semifinal 2'),
+      TextCellValue('2026-05-21 20:00'),
+      TextCellValue('2026-05-21 22:00'),
       IntCellValue(0),
       IntCellValue(1),
     ]);
@@ -344,6 +356,8 @@ void main() {
       TextCellValue(cup.championCode),
       TextCellValue('PLY002' == cup.championCode ? 'PLY001' : 'PLY002'),
       TextCellValue('${cup.code} Final 21:00'),
+      TextCellValue('2026-05-28 21:00'),
+      TextCellValue('2026-05-28 23:00'),
       IntCellValue(2),
       IntCellValue(1),
     ]);
