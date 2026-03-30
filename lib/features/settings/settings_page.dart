@@ -72,7 +72,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: ListTile(
                   onTap: () => _selectPlayer(player.code),
-                  leading: const TeamLogoAvatar(size: 30),
+                  leading: TeamLogoAvatar(
+                    size: 30,
+                    imageUrl: player.logoUrl,
+                  ),
                   title: Text(
                     player.name,
                     style: TextStyle(
@@ -118,6 +121,7 @@ class _SettingsPageState extends State<SettingsPage> {
       byCode[p.playerCode] = _PlayerOption(
         code: p.playerCode,
         name: p.name,
+        logoUrl: byCode[p.playerCode]?.logoUrl,
       );
     }
 
@@ -125,6 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
       byCode[p.playerCode] = _PlayerOption(
         code: p.playerCode,
         name: p.name,
+        logoUrl: byCode[p.playerCode]?.logoUrl,
       );
     }
 
@@ -134,6 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
         () => _PlayerOption(
           code: m.homePlayerCode,
           name: m.homePlayer,
+          logoUrl: m.homePlayerLogoUrl,
         ),
       );
       byCode.putIfAbsent(
@@ -141,6 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
         () => _PlayerOption(
           code: m.awayPlayerCode,
           name: m.awayPlayer,
+          logoUrl: m.awayPlayerLogoUrl,
         ),
       );
     }
@@ -156,8 +163,10 @@ class _PlayerOption {
   const _PlayerOption({
     required this.code,
     required this.name,
+    this.logoUrl,
   });
 
   final String code;
   final String name;
+  final String? logoUrl;
 }

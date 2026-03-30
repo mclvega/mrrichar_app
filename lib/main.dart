@@ -18,6 +18,7 @@ class VirtualFootballApp extends StatelessWidget {
 
   Future<_AppBootstrapResult> _bootstrapApp() async {
     await AppImageCache.instance.initialize();
+    await ExcelDataSource.instance.syncFromCloud();
     await ExcelDataSource.instance.loadData();
     final defaultCode = await LocalSettingsDb.instance.getDefaultPlayerCode();
     return _AppBootstrapResult(defaultPlayerCode: defaultCode);
@@ -93,6 +94,7 @@ class StartupLoadingPage extends StatelessWidget {
                               bootstrapFuture: Future<_AppBootstrapResult>.microtask(
                                 () async {
                                   await AppImageCache.instance.initialize();
+                                  await ExcelDataSource.instance.syncFromCloud();
                                   await ExcelDataSource.instance.loadData();
                                   final defaultCode = await LocalSettingsDb.instance
                                       .getDefaultPlayerCode();

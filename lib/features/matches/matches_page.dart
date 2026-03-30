@@ -52,10 +52,16 @@ class _MatchesPageState extends State<MatchesPage> {
                     ),
                   );
                 },
-                leading: const TeamLogoAvatar(size: 24),
+                leading: TeamLogoAvatar(
+                  size: 24,
+                  imageUrl: m.homePlayerLogoUrl,
+                ),
                 title: Row(
                   children: [
-                    const TeamLogoAvatar(size: 18),
+                    TeamLogoAvatar(
+                      size: 18,
+                      imageUrl: m.awayPlayerLogoUrl,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text('${m.homePlayer} vs ${m.awayPlayer}'),
@@ -86,7 +92,10 @@ class MatchDetailPage extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            const TeamLogoAvatar(size: 22),
+            TeamLogoAvatar(
+              size: 22,
+              imageUrl: match.homePlayerLogoUrl,
+            ),
             const SizedBox(width: 8),
             Expanded(child: Text('${match.homePlayer} vs ${match.awayPlayer}')),
           ],
@@ -103,7 +112,10 @@ class MatchDetailPage extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const TeamLogoAvatar(size: 20),
+                      TeamLogoAvatar(
+                        size: 20,
+                        imageUrl: match.homePlayerLogoUrl,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(child: Text('Equipo local: ${match.homePlayer} (${match.homePlayerCode})')),
                     ],
@@ -111,7 +123,10 @@ class MatchDetailPage extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const TeamLogoAvatar(size: 20),
+                      TeamLogoAvatar(
+                        size: 20,
+                        imageUrl: match.awayPlayerLogoUrl,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(child: Text('Equipo visitante: ${match.awayPlayer} (${match.awayPlayerCode})')),
                     ],

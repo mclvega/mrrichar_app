@@ -89,10 +89,11 @@
       </p>
 
       <h2>2. Datos que recopilamos</h2>
-      <p>La App esta orientada a gestionar informacion de campeonatos y usa principalmente datos locales.</p>
+      <p>La App esta orientada a gestionar informacion de campeonatos y combina datos locales con sincronizacion en la nube.</p>
       <ul>
         <li><strong>Configuracion local:</strong> se almacena localmente el jugador seleccionado por defecto.</li>
-        <li><strong>Datos de la App:</strong> la App lee datos de campeonato desde archivos internos del propio aplicativo.</li>
+        <li><strong>Datos de campeonatos:</strong> al iniciar, la App intenta descargar un archivo Excel publicado por el responsable de la App desde Google Sheets (formato XLSX) y lo guarda en una copia local del dispositivo.</li>
+        <li><strong>Copia local de datos:</strong> la App usa como fuente principal la ultima copia local descargada. Si la descarga falla, utiliza la copia local existente; y como respaldo, puede usar el archivo de datos incluido en la aplicacion.</li>
         <li><strong>Recursos visuales:</strong> en el primer inicio se pueden descargar imagenes (logo/fondo) para cache local y mejorar rendimiento.</li>
       </ul>
 
@@ -106,6 +107,7 @@
       <h2>4. Finalidad del tratamiento</h2>
       <ul>
         <li>Mostrar estadisticas y contenido de campeonatos.</li>
+        <li>Mantener los datos deportivos actualizados mediante sincronizacion al iniciar la App.</li>
         <li>Guardar preferencias del usuario para mejorar la experiencia.</li>
         <li>Cargar recursos visuales de forma eficiente (cache local).</li>
       </ul>
@@ -121,11 +123,18 @@
         No compartimos datos personales con terceros con fines comerciales.
         No se realiza venta de datos.
       </p>
+      <p>
+        Para la distribucion de datos de campeonatos, la App consume un archivo hospedado en infraestructura de Google (Google Sheets en formato de exportacion XLSX).
+        Este consumo es tecnico y necesario para actualizar el contenido mostrado.
+      </p>
 
       <h2>7. Conservacion</h2>
       <p>
         La configuracion local se conserva en el dispositivo hasta que el usuario desinstale la App
         o elimine sus datos desde el sistema.
+      </p>
+      <p>
+        La copia local del archivo Excel sincronizado se conserva en el dispositivo y se reemplaza en cada sincronizacion exitosa.
       </p>
 
       <h2>8. Seguridad</h2>
@@ -144,7 +153,7 @@
       <h2>10. Derechos del usuario</h2>
       <p>
         Puedes solicitar informacion sobre privacidad o ejercer derechos aplicables
-        escribiendo a <a href="mailto:soporte@mrrichar.com">soporte@mrrichar.com</a>.
+        escribiendo a <a href="mailto:mclvegadev@gmail.com">mclvegadev@gmail.com</a>.
       </p>
 
       <h2>11. Cambios a esta politica</h2>

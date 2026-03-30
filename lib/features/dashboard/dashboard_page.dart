@@ -47,6 +47,7 @@ class _DashboardPageState extends State<DashboardPage> {
         final data = snapshot.data!;
         final selectedCode = widget.defaultPlayerCode;
         final selectedName = _resolveSelectedName(data, selectedCode);
+        final selectedLogoUrl = _resolveSelectedLogoUrl(data, selectedCode);
         final playerTournaments = _countPlayerTournaments(data, selectedCode);
         final wonTournaments = _countWonTournaments(data, selectedCode);
         final activeTournaments = _activeTournaments(data);
@@ -70,7 +71,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const TeamLogoAvatar(size: 120),
+                          TeamLogoAvatar(
+                            size: 120,
+                            imageUrl: selectedLogoUrl,
+                          ),
                           const SizedBox(height: 14),
                           Text(
                             selectedName,
@@ -185,6 +189,27 @@ class _DashboardPageState extends State<DashboardPage> {
         .firstOrNull;
 
     return community?.name ?? tournament?.name ?? selectedCode;
+  }
+
+  String? _resolveSelectedLogoUrl(AppTournamentData data, String? selectedCode) {
+    if (selectedCode == null || selectedCode.isEmpty) {
+      return null;
+    }
+
+    for (final match in data.matches) {
+      if (match.homePlayerCode == selectedCode &&
+          match.homePlayerLogoUrl != null &&
+          match.homePlayerLogoUrl!.trim().isNotEmpty) {
+        return match.homePlayerLogoUrl;
+      }
+      if (match.awayPlayerCode == selectedCode &&
+          match.awayPlayerLogoUrl != null &&
+          match.awayPlayerLogoUrl!.trim().isNotEmpty) {
+        return match.awayPlayerLogoUrl;
+      }
+    }
+
+    return null;
   }
 
   int _countPlayerTournaments(AppTournamentData data, String? selectedCode) {

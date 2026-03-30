@@ -1,14 +1,20 @@
+import 'dart:io';
+
 import 'package:excel/excel.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart';
 
 class PlayerInfo {
   const PlayerInfo({
     required this.code,
     required this.name,
+    this.logoUrl,
   });
 
   final String code;
   final String name;
+  final String? logoUrl;
 }
 
 class PlayerRanking {
@@ -59,6 +65,7 @@ class ChampionshipInfo {
   const ChampionshipInfo({
     required this.code,
     required this.name,
+    this.logoUrl,
     required this.type,
     required this.championPlayerCode,
     required this.championName,
@@ -69,6 +76,7 @@ class ChampionshipInfo {
 
   final String code;
   final String name;
+  final String? logoUrl;
   final String type;
   final String championPlayerCode;
   final String championName;
@@ -128,8 +136,10 @@ class MatchInfo {
     required this.groupName,
     required this.homePlayerCode,
     required this.homePlayer,
+    this.homePlayerLogoUrl,
     required this.awayPlayerCode,
     required this.awayPlayer,
+    this.awayPlayerLogoUrl,
     required this.schedule,
     this.startDate,
     this.endDate,
@@ -142,8 +152,10 @@ class MatchInfo {
   final String groupName;
   final String homePlayerCode;
   final String homePlayer;
+  final String? homePlayerLogoUrl;
   final String awayPlayerCode;
   final String awayPlayer;
+  final String? awayPlayerLogoUrl;
   final String schedule;
   final String? startDate;
   final String? endDate;
@@ -190,21 +202,86 @@ class ExcelDataSource {
 
   static final ExcelDataSource instance = ExcelDataSource._();
   static const String _assetPath = 'assets/data/virtual_football_data.xlsx';
+  static const String _remoteExcelUrl =
+      'https://docs.google.com/spreadsheets/d/1wFG-BvNw3XdA96mGC0DGO1Zm_wl-hvGO/export?format=xlsx';
+  static const String _localExcelFileName = 'virtual_football_data_remote.xlsx';
 
   Future<AppTournamentData>? _cachedLoad;
 
+  Future<void> syncFromCloud() async {
+    final localPath = await _localExcelPath();
+    final localFile = File(localPath);
+
+    HttpClient? client;
+    try {
+      client = HttpClient();
+      final request = await client.getUrl(Uri.parse(_remoteExcelUrl));
+      final response = await request.close().timeout(const Duration(seconds: 25));
+
+      if (response.statusCode != HttpStatus.ok) {
+        return;
+      }
+
+      final bytesBuilder = BytesBuilder(copy: false);
+      await for (final chunk in response) {
+        bytesBuilder.add(chunk);
+      }
+      final bytes = bytesBuilder.takeBytes();
+      if (bytes.isEmpty) {
+        return;
+      }
+
+      await localFile.parent.create(recursive: true);
+      final tempFile = File('$localPath.tmp');
+      await tempFile.writeAsBytes(bytes, flush: true);
+
+      if (await localFile.exists()) {
+        await localFile.delete();
+      }
+      await tempFile.rename(localPath);
+      _cachedLoad = null;
+    } catch (_) {
+      // Keep existing local/asset source when network sync fails.
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
   Future<AppTournamentData> loadData() {
-    _cachedLoad ??= _loadFromAsset();
+    _cachedLoad ??= _loadPreferredSource();
     return _cachedLoad!;
   }
 
-  Future<AppTournamentData> _loadFromAsset() async {
-    final bytes = await rootBundle.load(_assetPath);
-    final buffer = bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
-    final excel = Excel.decodeBytes(buffer);
+  Future<AppTournamentData> _loadPreferredSource() async {
+    final localPath = await _localExcelPath();
+    final localFile = File(localPath);
+
+    if (await localFile.exists()) {
+      final localBytes = await localFile.readAsBytes();
+      if (localBytes.isNotEmpty) {
+        return _parseExcelBytes(localBytes);
+      }
+    }
+
+    final assetBytes = await rootBundle.load(_assetPath);
+    final buffer = assetBytes.buffer.asUint8List(
+      assetBytes.offsetInBytes,
+      assetBytes.lengthInBytes,
+    );
+    return _parseExcelBytes(buffer);
+  }
+
+  Future<String> _localExcelPath() async {
+    final dbPath = await getDatabasesPath();
+    return p.join(dbPath, _localExcelFileName);
+  }
+
+  AppTournamentData _parseExcelBytes(List<int> bytes) {
+    final excel = Excel.decodeBytes(bytes);
 
     final playersByCode = _parsePlayers(excel.tables['Players']);
     final championships = _parseChampionships(excel.tables['Championships'], playersByCode);
+    final matches = _parseMatches(excel.tables['Matches'], playersByCode);
     final championshipsByCode = {
       for (final championship in championships) championship.code: championship,
     };
@@ -221,11 +298,11 @@ class ExcelDataSource {
       ),
       championships: championships,
       championshipPhases: _parseChampionshipPhases(excel.tables['ChampionshipPhases']),
-      championshipTable: _parseChampionshipTable(
-        excel.tables['ChampionshipTable'],
+      championshipTable: _buildChampionshipTableFromMatches(
+        matches,
         playersByCode,
       ),
-      matches: _parseMatches(excel.tables['Matches'], playersByCode),
+      matches: matches,
     );
   }
 
@@ -234,16 +311,27 @@ class ExcelDataSource {
       return const {};
     }
 
+    final rowsData = sheet.rows;
+    if (rowsData.isEmpty) {
+      return const {};
+    }
+
+    final headers = _buildHeaderIndex(rowsData.first);
+    final codeIndex = _columnIndex(headers, ['code', 'playercode'], 0);
+    final nameIndex = _columnIndex(headers, ['name', 'playername'], 1);
+    final logoUrlIndex = _columnIndex(headers, ['logourl', 'logo', 'imageurl'], null);
+
     final players = <String, PlayerInfo>{};
-    for (final row in sheet.rows.skip(1)) {
-      final code = _readCell(row, 0);
-      final name = _readCell(row, 1);
+    for (final row in rowsData.skip(1)) {
+      final code = _readCell(row, codeIndex);
+      final name = _readCell(row, nameIndex);
+      final logoUrl = _readCellNullable(row, logoUrlIndex);
 
       if (code.isEmpty || name.isEmpty) {
         continue;
       }
 
-      players[code] = PlayerInfo(code: code, name: name);
+      players[code] = PlayerInfo(code: code, name: name, logoUrl: logoUrl);
     }
 
     return players;
@@ -357,15 +445,31 @@ class ExcelDataSource {
       return const [];
     }
 
+    final rowsData = sheet.rows;
+    if (rowsData.isEmpty) {
+      return const [];
+    }
+
+    final headers = _buildHeaderIndex(rowsData.first);
+    final codeIndex = _columnIndex(headers, ['code', 'championshipcode'], 0);
+    final nameIndex = _columnIndex(headers, ['name', 'championshipname'], 1);
+    final logoUrlIndex = _columnIndex(headers, ['logourl', 'logo', 'imageurl'], null);
+    final typeIndex = _columnIndex(headers, ['type'], 2);
+    final championPlayerCodeIndex = _columnIndex(headers, ['championplayercode'], 3);
+    final championPointsIndex = _columnIndex(headers, ['championpoints'], 4);
+    final statusIndex = _columnIndex(headers, ['status'], 5);
+    final detailsIndex = _columnIndex(headers, ['details'], 6);
+
     final rows = <ChampionshipInfo>[];
-    for (final row in sheet.rows.skip(1)) {
-      final code = _readCell(row, 0);
-      final name = _readCell(row, 1);
-      final type = _readCell(row, 2);
-      final championPlayerCode = _readCell(row, 3);
-      final championPoints = int.tryParse(_readCell(row, 4));
-      final status = _readCell(row, 5);
-      final details = _readCell(row, 6);
+    for (final row in rowsData.skip(1)) {
+      final code = _readCell(row, codeIndex);
+      final name = _readCell(row, nameIndex);
+      final logoUrl = _readCellNullable(row, logoUrlIndex);
+      final type = _readCell(row, typeIndex);
+      final championPlayerCode = _readCell(row, championPlayerCodeIndex);
+      final championPoints = int.tryParse(_readCell(row, championPointsIndex));
+      final status = _readCell(row, statusIndex);
+      final details = _readCell(row, detailsIndex);
       final championName = playersByCode[championPlayerCode]?.name ?? championPlayerCode;
 
       if (code.isEmpty ||
@@ -381,6 +485,7 @@ class ExcelDataSource {
         ChampionshipInfo(
           code: code,
           name: name,
+          logoUrl: logoUrl,
           type: type,
           championPlayerCode: championPlayerCode,
           championName: championName,
@@ -437,7 +542,9 @@ class ExcelDataSource {
       final awayGoals = int.tryParse(_readCell(row, awayGoalsIndex));
 
       final homePlayer = playersByCode[homePlayerCode]?.name ?? homePlayerCode;
+      final homePlayerLogoUrl = playersByCode[homePlayerCode]?.logoUrl;
       final awayPlayer = playersByCode[awayPlayerCode]?.name ?? awayPlayerCode;
+      final awayPlayerLogoUrl = playersByCode[awayPlayerCode]?.logoUrl;
 
       final resolvedSchedule = schedule.isNotEmpty
           ? schedule
@@ -457,8 +564,10 @@ class ExcelDataSource {
           groupName: groupName,
           homePlayerCode: homePlayerCode,
           homePlayer: homePlayer,
+          homePlayerLogoUrl: homePlayerLogoUrl,
           awayPlayerCode: awayPlayerCode,
           awayPlayer: awayPlayer,
+          awayPlayerLogoUrl: awayPlayerLogoUrl,
           schedule: resolvedSchedule,
           startDate: startDate,
           endDate: endDate,
@@ -509,55 +618,113 @@ class ExcelDataSource {
     return phases;
   }
 
-  List<ChampionshipTableEntry> _parseChampionshipTable(
-    Sheet? sheet,
+  List<ChampionshipTableEntry> _buildChampionshipTableFromMatches(
+    List<MatchInfo> matches,
     Map<String, PlayerInfo> playersByCode,
   ) {
-    if (sheet == null) {
+    if (matches.isEmpty) {
       return const [];
     }
 
-    final entries = <ChampionshipTableEntry>[];
-    for (final row in sheet.rows.skip(1)) {
-      final championshipCode = _readCell(row, 0);
-      final playerCode = _readCell(row, 1);
-      final position = int.tryParse(_readCell(row, 2));
-      final points = int.tryParse(_readCell(row, 3));
-      final played = int.tryParse(_readCell(row, 4));
-      final won = int.tryParse(_readCell(row, 5));
-      final drawn = int.tryParse(_readCell(row, 6));
-      final lost = int.tryParse(_readCell(row, 7));
-      final goalsFor = int.tryParse(_readCell(row, 8));
-      final goalsAgainst = int.tryParse(_readCell(row, 9));
+    final byChampionshipAndPlayer = <String, _TableStatsAccumulator>{};
 
-      if (championshipCode.isEmpty ||
-          playerCode.isEmpty ||
-          position == null ||
-          points == null ||
-          played == null ||
-          won == null ||
-          drawn == null ||
-          lost == null ||
-          goalsFor == null ||
-          goalsAgainst == null) {
-        continue;
-      }
+    String keyFor(String championshipCode, String playerCode) =>
+        '$championshipCode::$playerCode';
 
-      entries.add(
-        ChampionshipTableEntry(
+    _TableStatsAccumulator ensureAccumulator(String championshipCode, String playerCode) {
+      final key = keyFor(championshipCode, playerCode);
+      return byChampionshipAndPlayer.putIfAbsent(
+        key,
+        () => _TableStatsAccumulator(
           championshipCode: championshipCode,
           playerCode: playerCode,
           playerName: playersByCode[playerCode]?.name ?? playerCode,
-          position: position,
-          points: points,
-          played: played,
-          won: won,
-          drawn: drawn,
-          lost: lost,
-          goalsFor: goalsFor,
-          goalsAgainst: goalsAgainst,
         ),
       );
+    }
+
+    for (final match in matches) {
+      final home = ensureAccumulator(match.championshipCode, match.homePlayerCode);
+      final away = ensureAccumulator(match.championshipCode, match.awayPlayerCode);
+
+      final homeGoals = match.homeGoals;
+      final awayGoals = match.awayGoals;
+
+      if (homeGoals == null || awayGoals == null) {
+        continue;
+      }
+
+      home.played += 1;
+      away.played += 1;
+
+      home.goalsFor += homeGoals;
+      home.goalsAgainst += awayGoals;
+      away.goalsFor += awayGoals;
+      away.goalsAgainst += homeGoals;
+
+      if (homeGoals > awayGoals) {
+        home.won += 1;
+        away.lost += 1;
+        home.points += 3;
+      } else if (homeGoals < awayGoals) {
+        away.won += 1;
+        home.lost += 1;
+        away.points += 3;
+      } else {
+        home.drawn += 1;
+        away.drawn += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+    }
+
+    final byChampionship = <String, List<_TableStatsAccumulator>>{};
+    for (final acc in byChampionshipAndPlayer.values) {
+      byChampionship.putIfAbsent(acc.championshipCode, () => []).add(acc);
+    }
+
+    final entries = <ChampionshipTableEntry>[];
+    for (final championshipEntry in byChampionship.entries) {
+      final championshipCode = championshipEntry.key;
+      final rows = championshipEntry.value;
+
+      rows.sort((a, b) {
+        final byPoints = b.points.compareTo(a.points);
+        if (byPoints != 0) {
+          return byPoints;
+        }
+
+        final byGoalDiff = b.goalDiff.compareTo(a.goalDiff);
+        if (byGoalDiff != 0) {
+          return byGoalDiff;
+        }
+
+        final byGoalsFor = b.goalsFor.compareTo(a.goalsFor);
+        if (byGoalsFor != 0) {
+          return byGoalsFor;
+        }
+
+        return a.playerName.compareTo(b.playerName);
+      });
+
+      for (var i = 0; i < rows.length; i++) {
+        final row = rows[i];
+        entries.add(
+          ChampionshipTableEntry(
+            championshipCode: championshipCode,
+            playerCode: row.playerCode,
+            playerName: row.playerName,
+            position: i + 1,
+            points: row.points,
+            played: row.played,
+            won: row.won,
+            drawn: row.drawn,
+            lost: row.lost,
+            goalsFor: row.goalsFor,
+            goalsAgainst: row.goalsAgainst,
+          ),
+        );
+      }
     }
 
     entries.sort((a, b) {
@@ -646,4 +813,26 @@ class _StatsAccumulator {
   int titles = 0;
   int points = 0;
   final List<ChampionshipWinRecord> wins = [];
+}
+
+class _TableStatsAccumulator {
+  _TableStatsAccumulator({
+    required this.championshipCode,
+    required this.playerCode,
+    required this.playerName,
+  });
+
+  final String championshipCode;
+  final String playerCode;
+  final String playerName;
+
+  int points = 0;
+  int played = 0;
+  int won = 0;
+  int drawn = 0;
+  int lost = 0;
+  int goalsFor = 0;
+  int goalsAgainst = 0;
+
+  int get goalDiff => goalsFor - goalsAgainst;
 }

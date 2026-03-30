@@ -67,7 +67,10 @@ class _ChampionshipsPageState extends State<ChampionshipsPage> {
                 },
                 title: Text(item.name),
                 subtitle: Text('${item.type} | Campeon: ${item.championName} | ${item.championPoints} pts'),
-                leading: const TeamLogoAvatar(size: 22),
+                leading: TeamLogoAvatar(
+                  size: 22,
+                  imageUrl: item.logoUrl,
+                ),
                 trailing: Chip(label: Text(item.status)),
               ),
             );
@@ -286,7 +289,6 @@ class _GroupPhaseSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final groupedMatches = <String, List<MatchInfo>>{};
-    final tableByTeamCode = {for (final entry in tableEntries) entry.playerCode: entry};
 
     for (final match in matches) {
       final group = match.groupName.isEmpty ? 'Sin Grupo' : match.groupName;
@@ -445,17 +447,17 @@ class _GroupPhaseSection extends StatelessWidget {
                   final standings = teams.entries
                       .map(
                         (team) {
-                          final entry = tableByTeamCode[team.key];
+                          final entry = _buildGroupStats(teamCode: team.key, matches: groupMatches);
                           return _GroupStandingData(
                             teamCode: team.key,
                             teamName: team.value,
-                            points: entry?.points ?? 0,
-                            played: entry?.played ?? 0,
-                            won: entry?.won ?? 0,
-                            drawn: entry?.drawn ?? 0,
-                            lost: entry?.lost ?? 0,
-                            goalsFor: entry?.goalsFor ?? 0,
-                            goalsAgainst: entry?.goalsAgainst ?? 0,
+                            points: entry.points,
+                            played: entry.played,
+                            won: entry.won,
+                            drawn: entry.drawn,
+                            lost: entry.lost,
+                            goalsFor: entry.goalsFor,
+                            goalsAgainst: entry.goalsAgainst,
                           );
                         },
                       )
@@ -508,6 +510,62 @@ class _GroupPhaseSection extends StatelessWidget {
           ],
         ],
       ],
+    );
+  }
+
+  _GroupStandingData _buildGroupStats({
+    required String teamCode,
+    required List<MatchInfo> matches,
+  }) {
+    var points = 0;
+    var played = 0;
+    var won = 0;
+    var drawn = 0;
+    var lost = 0;
+    var goalsFor = 0;
+    var goalsAgainst = 0;
+
+    for (final match in matches) {
+      final isHome = match.homePlayerCode == teamCode;
+      final isAway = match.awayPlayerCode == teamCode;
+      if (!isHome && !isAway) {
+        continue;
+      }
+
+      final homeGoals = match.homeGoals;
+      final awayGoals = match.awayGoals;
+      if (homeGoals == null || awayGoals == null) {
+        continue;
+      }
+
+      played += 1;
+
+      final gf = isHome ? homeGoals : awayGoals;
+      final ga = isHome ? awayGoals : homeGoals;
+      goalsFor += gf;
+      goalsAgainst += ga;
+
+      if (gf > ga) {
+        won += 1;
+        points += 3;
+      } else if (gf < ga) {
+        lost += 1;
+      } else {
+        drawn += 1;
+        points += 1;
+      }
+    }
+
+    return _GroupStandingData(
+      teamCode: teamCode,
+      teamName: '',
+      points: points,
+      played: played,
+      won: won,
+      drawn: drawn,
+      lost: lost,
+      goalsFor: goalsFor,
+      goalsAgainst: goalsAgainst,
     );
   }
 }
@@ -814,7 +872,10 @@ class TeamMatchesInGroupPage extends StatelessWidget {
                         ),
                       );
                     },
-                    leading: const Icon(Icons.sports_soccer),
+                    leading: TeamLogoAvatar(
+                      size: 22,
+                      imageUrl: m.homePlayerLogoUrl,
+                    ),
                     title: Text('${m.homePlayer} vs ${m.awayPlayer}'),
                     subtitle: timeLabel.isEmpty ? null : Text(timeLabel),
                   ),

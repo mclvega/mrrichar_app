@@ -28,6 +28,7 @@ void main() {
     _CupSeed(
       code: 'CHP2020',
       name: 'UEFA Champions League 2019-20',
+      logoUrl: 'https://mrrichar.netlify.app/logo.png',
       championCode: 'PLY003',
       championPoints: 900,
       details: 'Final: Paris Saint-Germain 0-1 Bayern Munich',
@@ -35,6 +36,7 @@ void main() {
     _CupSeed(
       code: 'CHP2021',
       name: 'UEFA Champions League 2020-21',
+      logoUrl: 'https://mrrichar.netlify.app/logo.png',
       championCode: 'PLY004',
       championPoints: 920,
       details: 'Final: Manchester City 0-1 Chelsea',
@@ -42,6 +44,7 @@ void main() {
     _CupSeed(
       code: 'CHP2022',
       name: 'UEFA Champions League 2021-22',
+      logoUrl: 'https://mrrichar.netlify.app/logo.png',
       championCode: 'PLY001',
       championPoints: 980,
       details: 'Final: Liverpool 0-1 Real Madrid',
@@ -49,6 +52,7 @@ void main() {
     _CupSeed(
       code: 'CHP2023',
       name: 'UEFA Champions League 2022-23',
+      logoUrl: 'https://mrrichar.netlify.app/logo.png',
       championCode: 'PLY002',
       championPoints: 1020,
       details: 'Final: Manchester City 1-0 Inter Milan',
@@ -56,6 +60,7 @@ void main() {
     _CupSeed(
       code: 'CHP2024',
       name: 'UEFA Champions League 2023-24',
+      logoUrl: 'https://mrrichar.netlify.app/logo.png',
       championCode: 'PLY001',
       championPoints: 1100,
       details: 'Final: Borussia Dortmund 0-2 Real Madrid',
@@ -69,40 +74,18 @@ void main() {
     'Grupo D': ['PLY008', 'PLY011', 'PLY012', 'PLY014'],
   };
 
-  final groupStandingsTemplate = <String, List<_StandingSeed>>{
-    'Grupo A': [
-      _StandingSeed('PLY001', 13, 6, 4, 1, 1, 11, 5),
-      _StandingSeed('PLY005', 10, 6, 3, 1, 2, 9, 7),
-      _StandingSeed('PLY006', 7, 6, 2, 1, 3, 7, 9),
-      _StandingSeed('PLY016', 3, 6, 1, 0, 5, 4, 10),
-    ],
-    'Grupo B': [
-      _StandingSeed('PLY002', 14, 6, 4, 2, 0, 12, 4),
-      _StandingSeed('PLY007', 9, 6, 3, 0, 3, 8, 8),
-      _StandingSeed('PLY004', 8, 6, 2, 2, 2, 7, 8),
-      _StandingSeed('PLY013', 2, 6, 0, 2, 4, 3, 10),
-    ],
-    'Grupo C': [
-      _StandingSeed('PLY003', 12, 6, 4, 0, 2, 10, 6),
-      _StandingSeed('PLY009', 11, 6, 3, 2, 1, 9, 6),
-      _StandingSeed('PLY010', 6, 6, 2, 0, 4, 6, 9),
-      _StandingSeed('PLY015', 4, 6, 1, 1, 4, 4, 8),
-    ],
-    'Grupo D': [
-      _StandingSeed('PLY008', 12, 6, 4, 0, 2, 11, 7),
-      _StandingSeed('PLY011', 9, 6, 3, 0, 3, 8, 8),
-      _StandingSeed('PLY012', 8, 6, 2, 2, 2, 7, 7),
-      _StandingSeed('PLY014', 4, 6, 1, 1, 4, 4, 8),
-    ],
-  };
-
   final playersSheet = excel['Players'];
   playersSheet.appendRow([
     TextCellValue('code'),
     TextCellValue('name'),
+    TextCellValue('logoUrl'),
   ]);
   for (final team in teams) {
-    playersSheet.appendRow([TextCellValue(team.$1), TextCellValue(team.$2)]);
+    playersSheet.appendRow([
+      TextCellValue(team.$1),
+      TextCellValue(team.$2),
+      TextCellValue('https://mrrichar.netlify.app/logo.png'),
+    ]);
   }
 
   final communityRankingSheet = excel['CommunityRanking'];
@@ -141,6 +124,7 @@ void main() {
   championshipsSheet.appendRow([
     TextCellValue('code'),
     TextCellValue('name'),
+    TextCellValue('logoUrl'),
     TextCellValue('type'),
     TextCellValue('championPlayerCode'),
     TextCellValue('championPoints'),
@@ -151,6 +135,7 @@ void main() {
     championshipsSheet.appendRow([
       TextCellValue(cup.code),
       TextCellValue(cup.name),
+      TextCellValue(cup.logoUrl),
       TextCellValue('Copa Internacional'),
       TextCellValue(cup.championCode),
       IntCellValue(cup.championPoints),
@@ -203,41 +188,6 @@ void main() {
       TextCellValue('eliminacion directa'),
       IntCellValue(5),
     ]);
-  }
-
-  final tableSheet = excel['ChampionshipTable'];
-  tableSheet.appendRow([
-    TextCellValue('championshipCode'),
-    TextCellValue('playerCode'),
-    TextCellValue('position'),
-    TextCellValue('points'),
-    TextCellValue('played'),
-    TextCellValue('won'),
-    TextCellValue('drawn'),
-    TextCellValue('lost'),
-    TextCellValue('goalsFor'),
-    TextCellValue('goalsAgainst'),
-  ]);
-  for (final cup in championships) {
-    var position = 1;
-    for (final groupName in ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D']) {
-      final standings = groupStandingsTemplate[groupName] ?? const [];
-      for (final s in standings) {
-        tableSheet.appendRow([
-          TextCellValue(cup.code),
-          TextCellValue(s.teamCode),
-          IntCellValue(position),
-          IntCellValue(s.points),
-          IntCellValue(s.played),
-          IntCellValue(s.won),
-          IntCellValue(s.drawn),
-          IntCellValue(s.lost),
-          IntCellValue(s.goalsFor),
-          IntCellValue(s.goalsAgainst),
-        ]);
-        position++;
-      }
-    }
   }
 
   final matchesSheet = excel['Matches'];
@@ -383,6 +333,7 @@ class _CupSeed {
   const _CupSeed({
     required this.code,
     required this.name,
+    required this.logoUrl,
     required this.championCode,
     required this.championPoints,
     required this.details,
@@ -390,29 +341,8 @@ class _CupSeed {
 
   final String code;
   final String name;
+  final String logoUrl;
   final String championCode;
   final int championPoints;
   final String details;
-}
-
-class _StandingSeed {
-  const _StandingSeed(
-    this.teamCode,
-    this.points,
-    this.played,
-    this.won,
-    this.drawn,
-    this.lost,
-    this.goalsFor,
-    this.goalsAgainst,
-  );
-
-  final String teamCode;
-  final int points;
-  final int played;
-  final int won;
-  final int drawn;
-  final int lost;
-  final int goalsFor;
-  final int goalsAgainst;
 }
